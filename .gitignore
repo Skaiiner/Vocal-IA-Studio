@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Datos locales: ajustes, logs y claves
+settings.json
+.env
+logs/
+
+# Proyectos y audio de prueba
+Projects/
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg

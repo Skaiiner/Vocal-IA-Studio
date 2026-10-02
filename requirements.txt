@@ -1,0 +1,14 @@
+# Dependencias de la Fase 1. Instalación recomendada: .\scripts\install.ps1
+# (usa pyproject.toml, que es la fuente de verdad; este archivo es para pip install -r)
+PySide6>=6.6
+numpy>=1.26
+scipy>=1.11
+soundfile>=0.12
+sounddevice>=0.4.6
+imageio-ffmpeg>=0.5
+psutil>=5.9
+yt-dlp>=2024.1
+
+# Desarrollo
+pytest>=8
+pytest-qt>=4.4

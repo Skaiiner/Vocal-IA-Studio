@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+PRESETS: dict[str, dict] = {
+    "Clean": {
+        "formant_shift": 0.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 100,  "gain_db":  0.0, "q": 0.7},
+            {"type": "peak",       "freq": 300,  "gain_db":  0.0, "q": 1.0},
+            {"type": "peak",       "freq": 1000, "gain_db":  0.0, "q": 1.0},
+            {"type": "peak",       "freq": 3500, "gain_db":  0.0, "q": 1.0},
+            {"type": "high_shelf", "freq": 8000, "gain_db":  0.0, "q": 0.7},
+        ],
+        "compressor": {"enabled": False, "threshold_db": -18, "ratio": 2.0,
+                       "attack_ms": 5.0, "release_ms": 50.0, "makeup_db": 0.0},
+        "de_esser":  {"enabled": False, "threshold_db": -20, "freq_hz": 7000, "bandwidth": 3000},
+        "reverb":    {"enabled": False, "room_size": 0.2, "wet": 0.1},
+        "delay":     {"enabled": False, "time_ms": 250, "feedback": 0.3, "wet": 0.2},
+    },
+    "Pop": {
+        "formant_shift": 0.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 100,  "gain_db": -2.0, "q": 0.7},
+            {"type": "peak",       "freq": 250,  "gain_db": -3.0, "q": 1.2},
+            {"type": "peak",       "freq": 1200, "gain_db":  2.0, "q": 0.8},
+            {"type": "peak",       "freq": 4000, "gain_db":  3.0, "q": 1.0},
+            {"type": "high_shelf", "freq": 8000, "gain_db":  2.0, "q": 0.7},
+        ],
+        "compressor": {"enabled": True, "threshold_db": -20, "ratio": 4.0,
+                       "attack_ms": 3.0, "release_ms": 40.0, "makeup_db": 3.0},
+        "de_esser":  {"enabled": True,  "threshold_db": -22, "freq_hz": 7000, "bandwidth": 3000},
+        "reverb":    {"enabled": True,  "room_size": 0.25, "wet": 0.12},
+        "delay":     {"enabled": False, "time_ms": 200, "feedback": 0.25, "wet": 0.15},
+    },
+    "Rock": {
+        "formant_shift": 0.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 80,   "gain_db":  3.0, "q": 0.7},
+            {"type": "peak",       "freq": 200,  "gain_db": -4.0, "q": 1.5},
+            {"type": "peak",       "freq": 900,  "gain_db":  2.0, "q": 0.8},
+            {"type": "peak",       "freq": 3000, "gain_db":  3.0, "q": 1.0},
+            {"type": "high_shelf", "freq": 7000, "gain_db":  1.0, "q": 0.7},
+        ],
+        "compressor": {"enabled": True, "threshold_db": -18, "ratio": 6.0,
+                       "attack_ms": 2.0, "release_ms": 30.0, "makeup_db": 4.0},
+        "de_esser":  {"enabled": True,  "threshold_db": -20, "freq_hz": 6500, "bandwidth": 2500},
+        "reverb":    {"enabled": True,  "room_size": 0.35, "wet": 0.15},
+        "delay":     {"enabled": False, "time_ms": 300, "feedback": 0.35, "wet": 0.2},
+    },
+    "Deep": {
+        "formant_shift": -2.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 120,  "gain_db":  5.0, "q": 0.7},
+            {"type": "peak",       "freq": 350,  "gain_db":  3.0, "q": 1.0},
+            {"type": "peak",       "freq": 1500, "gain_db": -2.0, "q": 0.9},
+            {"type": "peak",       "freq": 4000, "gain_db": -3.0, "q": 1.2},
+            {"type": "high_shelf", "freq": 8000, "gain_db": -2.0, "q": 0.7},
+        ],
+        "compressor": {"enabled": True, "threshold_db": -20, "ratio": 3.0,
+                       "attack_ms": 8.0, "release_ms": 80.0, "makeup_db": 2.0},
+        "de_esser":  {"enabled": False, "threshold_db": -24, "freq_hz": 7000, "bandwidth": 3000},
+        "reverb":    {"enabled": True,  "room_size": 0.5, "wet": 0.2},
+        "delay":     {"enabled": False, "time_ms": 350, "feedback": 0.3, "wet": 0.2},
+    },
+    "Radio": {
+        "formant_shift": 0.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 150,  "gain_db": -6.0, "q": 0.7},
+            {"type": "peak",       "freq": 300,  "gain_db": -3.0, "q": 1.5},
+            {"type": "peak",       "freq": 1500, "gain_db":  4.0, "q": 0.8},
+            {"type": "peak",       "freq": 5000, "gain_db":  2.0, "q": 1.0},
+            {"type": "high_shelf", "freq": 9000, "gain_db": -4.0, "q": 0.7},
+        ],
+        "compressor": {"enabled": True, "threshold_db": -14, "ratio": 8.0,
+                       "attack_ms": 1.0, "release_ms": 20.0, "makeup_db": 6.0},
+        "de_esser":  {"enabled": True,  "threshold_db": -18, "freq_hz": 7500, "bandwidth": 3000},
+        "reverb":    {"enabled": False, "room_size": 0.1, "wet": 0.05},
+        "delay":     {"enabled": False, "time_ms": 150, "feedback": 0.2, "wet": 0.1},
+    },
+    "Studio": {
+        "formant_shift": 0.0,
+        "eq_bands": [
+            {"type": "low_shelf",  "freq": 100,  "gain_db": -1.0, "q": 0.7},
+            {"type": "peak",       "freq": 280,  "gain_db": -2.0, "q": 1.2},
+            {"type": "peak",       "freq": 1000, "gain_db":  1.0, "q": 0.8},
+            {"type": "peak",       "freq": 4500, "gain_db":  2.0, "q": 1.0},
+            {"type": "high_shelf", "freq": 8500, "gain_db":  1.5, "q": 0.7},
+        ],
+        "compressor": {"enabled": True, "threshold_db": -20, "ratio": 3.0,
+                       "attack_ms": 5.0, "release_ms": 60.0, "makeup_db": 2.0},
+        "de_esser":  {"enabled": True,  "threshold_db": -22, "freq_hz": 7000, "bandwidth": 2500},
+        "reverb":    {"enabled": True,  "room_size": 0.3, "wet": 0.1},
+        "delay":     {"enabled": False, "time_ms": 220, "feedback": 0.25, "wet": 0.12},
+    },
+}
+
+PRESET_NAMES = ["Custom"] + list(PRESETS.keys())
