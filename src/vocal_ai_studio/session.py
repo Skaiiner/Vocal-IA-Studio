@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from vocal_ai_studio.ai.feedback import CoachFeedback
+from vocal_ai_studio.ai.providers import LocalRulesProvider, OllamaProvider
+from vocal_ai_studio.ai import rules as coach_rules
 from vocal_ai_studio.audio.io import AudioData
 from vocal_ai_studio.core.config import Settings, SettingsStore
 from vocal_ai_studio.core.errors import AppError
@@ -341,6 +344,49 @@ class Session:
         self.save_voice_lab(settings)
         self.refresh_tracks()
         return project.get_take(take.id)  # type: ignore[return-value]
+
+    # --- AI Coach ---
+    def _coach_provider(self):
+        if self.settings.ai_provider == "ollama":
+            provider = OllamaProvider(self.settings.ollama_endpoint, self.settings.ollama_model,
+                                      self.settings.ai_temperature)
+            if provider.is_available():
+                return provider
+        return LocalRulesProvider()
+
+    def generate_coach_feedback(self) -> CoachFeedback:
+        analysis = self.load_vocal_analysis()
+        if analysis is None:
+            raise AppError("Analiza tu voz primero.", "Hace falta el análisis de afinación (pestaña Voice).",
+                           "Ve a Voice y pulsa Analizar, y vuelve aquí.")
+        song = self.load_song_analysis()
+        feedback = coach_rules.build_feedback(analysis, song)
+        provider = self._coach_provider()
+        if not isinstance(provider, LocalRulesProvider):
+            prompt = (
+                "Reescribe este feedback de coach vocal en un tono cercano y motivador, en español, "
+                "conservando todos los datos concretos (cents, notas, tiempos). No inventes datos nuevos.\n\n"
+                f"Resumen: {feedback.summary}\n"
+                f"Puntos fuertes: {'; '.join(feedback.strengths) or 'ninguno destacado'}\n"
+                f"A mejorar: {'; '.join(feedback.issues) or 'ninguno'}"
+            )
+            try:
+                rewritten = provider.complete(prompt)
+            except OSError as exc:
+                log.warning("Ollama no respondió, se usa el feedback de reglas locales: %s", exc)
+            else:
+                if rewritten:
+                    feedback.summary = rewritten
+                    feedback.generated_by = f"Ollama ({self.settings.ollama_model})"
+        key = f"coach_{self._vocal_analysis_key()}"
+        self._require_project().save_analysis_json(key, feedback.to_dict())
+        return feedback
+
+    def load_coach_feedback(self) -> CoachFeedback | None:
+        if self.project is None:
+            return None
+        data = self.project.load_analysis_json(f"coach_{self._vocal_analysis_key()}")
+        return CoachFeedback.from_dict(data) if data else None
 
     # --- transporte ---
     def play(self) -> None:

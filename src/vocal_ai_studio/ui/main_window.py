@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from vocal_ai_studio.session import Session
+from vocal_ai_studio.ui.ai_coach_view import AiCoachView
 from vocal_ai_studio.ui.pitch_editor_view import PitchEditorView
 from vocal_ai_studio.ui.settings_view import SettingsView
 from vocal_ai_studio.ui.song_view import SongView
@@ -27,9 +28,6 @@ from vocal_ai_studio.ui.widgets import placeholder_tab, show_error
 log = logging.getLogger(__name__)
 
 FUTURE_TABS = [
-    ("AI Coach", "Un asistente que escucha tu interpretación y te explica cómo mejorar. (Fase 5)",
-     ["Feedback claro: \"esta nota está 35 cents por debajo\"", "Ejercicios concretos para cada problema detectado",
-      "Funciona con IA local (Ollama) sin enviar tu voz a Internet"]),
     ("Live Voice", "Voz procesada en tiempo real hacia OBS y Discord. (Fase 7)",
      ["Entrada, salida, monitorización y latencia", "Bypass y mezcla Dry/Wet",
       "Micrófono virtual mediante VB-CABLE o VoiceMeeter", "Medidores de nivel y uso de CPU"]),
@@ -77,6 +75,9 @@ class MainWindow(QMainWindow):
         self.voice_lab_view = VoiceLabView(session)
         self.voice_lab_view.status.connect(self.show_status)
         self.tabs.addTab(self.voice_lab_view, "Voice Lab")
+        self.ai_coach_view = AiCoachView(session)
+        self.ai_coach_view.status.connect(self.show_status)
+        self.tabs.addTab(self.ai_coach_view, "AI Coach")
         for name, desc, bullets in FUTURE_TABS:
             index = self.tabs.addTab(placeholder_tab(name, desc, bullets), name)
             self.tabs.setTabToolTip(index, "Llegará en una fase posterior")
@@ -134,6 +135,7 @@ class MainWindow(QMainWindow):
         self.voice_view.refresh()
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
+        self.ai_coach_view.refresh()
         self._update_project_label()
         self.show_status(f"Proyecto creado en {project.root}")
 
@@ -152,6 +154,7 @@ class MainWindow(QMainWindow):
         self.voice_view.refresh()
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
+        self.ai_coach_view.refresh()
         self._update_project_label()
         self.show_status(f"Proyecto abierto: {path}")
 
@@ -181,6 +184,7 @@ class MainWindow(QMainWindow):
         self.voice_view.refresh()
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
+        self.ai_coach_view.refresh()
         self._update_project_label()
         self.show_status(f"Guardado como {project.root}")
 
@@ -194,11 +198,14 @@ class MainWindow(QMainWindow):
             self.pitch_editor_view.refresh()
         elif widget is self.voice_lab_view:
             self.voice_lab_view.refresh()
+        elif widget is self.ai_coach_view:
+            self.ai_coach_view.refresh()
 
     def _on_project_data_changed(self) -> None:
         self.voice_view.refresh()
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
+        self.ai_coach_view.refresh()
 
     def _update_project_label(self) -> None:
         project = self.session.project
