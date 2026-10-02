@@ -3,12 +3,14 @@
 Estudio vocal de escritorio para practicar canto y modificar la voz. **Todo el procesamiento es local**:
 tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 
-> **Estado: Fases 1, 2 y 3 completadas y verificadas.** Ya puedes importar canciones, reproducirlas,
+> **Estado: Fases 1 a 5 completadas y verificadas.** Ya puedes importar canciones, reproducirlas,
 > grabar tu voz en varias tomas, exportar el resultado, **analizar tu afinación** (notas, cents,
 > estabilidad, rango, vibrato, pausas, BPM y tonalidad) con un **indicador de tu nota en vivo mientras
-> cantas**, y **corregir la afinación** (autotune con modos predefinidos, o editando nota a nota a mano).
-> Las fases 4–8 (Voice Lab, IA, OBS/Discord) están diseñadas en la arquitectura pero todavía no
-> implementadas. Ver [Hoja de ruta](#hoja-de-ruta).
+> cantas**, **corregir la afinación** (autotune con modos predefinidos, o editando nota a nota a mano),
+> retocar la voz en **Voice Lab** (formantes, brillo, peso vocal, efectos y presets) y recibir
+> **feedback de un AI Coach** (puntos fuertes, a mejorar y ejercicios, con reglas locales o IA vía Ollama).
+> Las fases 6–8 (separación voz/instrumental, voice conversion, tiempo real, OBS/Discord) están
+> diseñadas en la arquitectura pero todavía no implementadas. Ver [Hoja de ruta](#hoja-de-ruta).
 
 ## Qué hace hoy
 
@@ -29,7 +31,9 @@ tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 | **BPM y tonalidad** de la canción | ✅ |
 | **Autotune**: modos Natural/Balanced/Hard Autotune/Extreme, Amount/Speed/Humanize/Key/Scale/Formantes | ✅ |
 | **Editor manual de afinación**: transportar, excluir, dividir y unir notas, arrastrando o con botones | ✅ |
-| Voice Lab, IA, OBS/Discord | 🚧 Fases 4–8 |
+| **Voice Lab**: formantes, brillo, peso vocal, efectos y presets | ✅ |
+| **AI Coach**: feedback, puntos fuertes, a mejorar y ejercicios (reglas locales u Ollama) | ✅ |
+| Separación voz/instrumental, voice conversion, OBS/Discord | 🚧 Fases 6–8 |
 
 ## Instalación
 
@@ -224,9 +228,9 @@ La arquitectura y las decisiones técnicas están en [ARCHITECTURE.md](ARCHITECT
 | 1 | Base: importar, reproducir, onda, grabar, exportar, proyectos | ✅ Hecha |
 | 2 | Detección de afinación, notas, análisis vocal, BPM y tonalidad | ✅ Hecha |
 | 3 | Autotune (Natural/Balanced/Hard/Extreme) y editor manual de pitch | ✅ Hecha |
-| 4 | Voice Lab: formantes, brillo, peso vocal, efectos y presets | Siguiente |
-| 5 | AI Coach: feedback y ejercicios, con IA local (Ollama) | Pendiente |
-| 6 | Separación voz/instrumental (Demucs), voice conversion, YouTube | Pendiente |
+| 4 | Voice Lab: formantes, brillo, peso vocal, efectos y presets | ✅ Hecha |
+| 5 | AI Coach: feedback y ejercicios, con IA local (Ollama) | ✅ Hecha |
+| 6 | Separación voz/instrumental (Demucs), voice conversion, YouTube | Siguiente |
 | 7 | Tiempo real, micrófono virtual, OBS y Discord | Pendiente |
 | 8 | Optimización, ejecutable `.exe`, documentación final | Pendiente |
 
