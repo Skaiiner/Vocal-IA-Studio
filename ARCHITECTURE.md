@@ -12,7 +12,8 @@ implementaciones concretas.
 | **PySide6 (Qt)** | Un solo proceso para UI y audio, lo que importa para la latencia en tiempo real (Fase 7). Widgets propios con QPainter para onda y pitch. Licencia LGPL. Empaquetable con PyInstaller y portable a macOS/Linux. |
 | **sounddevice (PortAudio)** | Acceso de bajo nivel con callbacks propios; permite seek, pausa y monitorización. WASAPI en Windows. |
 | **soundfile + FFmpeg** | soundfile para WAV/FLAC/OGG; FFmpeg para todo lo demás. El binario viene en el paquete `imageio-ffmpeg`, así que no hay que instalar nada a mano. |
-| **numpy / scipy** | DSP y detección de tono/BPM/tonalidad (algoritmo YIN propio, ver más abajo). torch se añadirá en las fases que lo necesiten. |
+| **numpy / scipy** | DSP y detección de tono/BPM/tonalidad (algoritmo YIN propio, ver más abajo). |
+| **torch + Demucs + transformers (Fase 6)** | Separación de fuentes (Demucs, MIT) y conversión de voz (arquitectura RVC v2, MIT) requieren de verdad una red neuronal; no hay alternativa en NumPy puro razonable. CUDA si hay GPU NVIDIA compatible (`core/hardware.py`), CPU si no. `_configure_ml_cache()` redirige `TORCH_HOME`/`HF_HOME`/`XDG_CACHE_HOME` a `home/.cache` (la carpeta de datos de la app), nunca al perfil de usuario en `C:`. |
 
 Alternativas descartadas: Electron y Tauri añadían una segunda cadena de herramientas y comunicación
 entre procesos sin aportar nada a una aplicación de audio de un solo usuario.
@@ -55,12 +56,26 @@ src/vocal_ai_studio/
 │   ├── notes.py           Agrupa el rastro de F0 en NoteSegment (notas con duración, cents, nombre)
 │   ├── metrics.py         VocalAnalysis: afinación media, estabilidad, rango, pausas, vibrato
 │   └── song.py             SongAnalysis: BPM (autocorrelación de onsets) y tonalidad (cromagrama + Krumhansl-Kessler)
-├── session.py             Une proyecto + reproductor + grabador + análisis + corrección (la UI solo habla con esto)
+├── effects/               chain.py (VoiceLabSettings + apply_chain), eq.py, dynamics.py, reverb.py,
+│                           formants.py, presets.py — Voice Lab (Fase 4)
+├── ai/                    feedback.py (CoachFeedback), providers.py (reglas locales ↔ Ollama),
+│                           rules.py — AI Coach (Fase 5)
+├── separation/
+│   └── demucs_separator.py  DemucsSeparator: separa voz/instrumental (modelo htdemucs, progreso/cancelación)
+├── voice_conversion/
+│   ├── synthesizer.py     Synthesizer (puerto de SynthesizerTrnMs768NSFsid v2, f0=1): TextEncoder768,
+│   │                       ResidualCouplingBlock, GeneratorNSF (vocoder NSF/HiFi-GAN)
+│   ├── modules.py         Bloques compartidos del decoder/vocoder (WaveNet residual, resblocks HiFi-GAN)
+│   ├── content_encoder.py ContentEncoder: embeddings HuBERT/content-vec (768 dim) a partir del audio 16kHz
+│   ├── checkpoint.py      load_checkpoint: valida versión v2 y f0=1, reconstruye Synthesizer desde el .pth
+│   └── model.py           RVCVoiceConversionModel: pipeline completo (F0 + contenido + síntesis), progreso/cancelación
+├── session.py             Une proyecto + reproductor + grabador + análisis + corrección + separación +
+│                           conversión de voz (la UI solo habla con esto)
 ├── ui/                    PySide6: main_window, song_view, voice_view, pitch_view, pitch_editor_widget,
 │                           pitch_editor_view, settings_view, waveform_widget, background (QThread
-│                           reutilizable), theme
-└── voice_conversion/ effects/ ai/ realtime/ obs/ discord/
-                           Reservados para las fases 4–7 (hoy solo documentación)
+│                           reutilizable), theme, separation_view, voice_conversion_view
+└── realtime/ obs/ discord/
+                           Reservados para la fase 7 (hoy solo documentación)
 ```
 
 ### Regla de dependencias
@@ -82,11 +97,11 @@ puntos de extensión de las fases siguientes:
 | `AudioBackend` | Abrir entrada/salida de audio. Implementado por `SoundDeviceBackend`; en los tests, por un backend falso. | 1 ✅ |
 | `SongSource` | Buscar y traer canciones. Implementado por `LocalLibrarySource` (carpetas propias) y `YouTubeSource` (yt-dlp, opcional). Añadir otra fuente (otro servicio) no toca el resto de la app. | 1 ✅ |
 | `PitchDetector` | Implementado por `YinPitchDetector` (CPU, NumPy puro). En el futuro, CREPE/torchcrepe (GPU) con la misma firma. | 2 ✅ |
-| `EffectProcessor` | EQ, compresor, reverb… encadenables | 4 |
 | — | `pitch.shifter.psola_resynthesize` no sigue ninguna interfaz propia todavía (solo hay un método); se extraerá a un `PitchShifter` Protocol si llega un segundo algoritmo (p. ej. WORLD). | 3 ✅ |
-| `AIProvider` | IA local (Ollama), API gratuita o de pago, intercambiables | 5 |
-| `SourceSeparator` | Demucs u otro, con progreso y cancelación | 6 |
-| `VoiceConversionModel` | RVC, So-VITS-SVC, DDSP: declara licencia y si exige GPU | 6 |
+| — | `effects.chain.apply_chain` no sigue el `EffectProcessor` Protocol (EQ, compresor, de-esser, reverb y delay se aplican en cadena desde un único `VoiceLabSettings`, no como objetos encadenables); el Protocol queda para si algún efecto necesita vivir fuera de esa cadena. | 4 ✅ |
+| `AIProvider` | Implementado por `LocalRulesProvider` (reglas sin red) y `OllamaProvider` (modelo local vía Ollama); intercambiables, la UI no distingue cuál responde. | 5 ✅ |
+| `SourceSeparator` | Implementado por `DemucsSeparator` (htdemucs), con progreso y cancelación. | 6 ✅ |
+| `VoiceConversionModel` | Implementado por `RVCVoiceConversionModel` (arquitectura RVC v2, MIT, `requires_gpu = False` aunque usa CUDA si hay GPU disponible). | 6 ✅ |
 
 Antes de integrar un modelo hay que comprobar licencia, requisitos, rendimiento y si necesita GPU;
 la interfaz `VoiceConversionModel` obliga a declarar `license` y `requires_gpu` precisamente por eso.
@@ -189,6 +204,22 @@ ejercicios vocales, scoring, comparación entre tomas, mezcla automática y plug
 El `PeakCache` y el reproductor multipista ya soportan varias pistas con offsets, que es lo que
 necesitarán el comping de tomas y la separación voz/instrumental.
 
+## Separación y conversión de voz: por qué Demucs/RVC, y una trampa del vocoder
+
+Licencias primero: Demucs (Meta) y la arquitectura RVC v2 son MIT, sin la obligación de "copyleft" que
+tiene por ejemplo pedalboard (GPL v3) — se pueden incluir directamente en el código de la app sin
+cambiar su licencia. `separation/demucs_separator.py` y `voice_conversion/model.py` son el puerto
+nativo de esas arquitecturas a este proceso (no un subproceso ni un venv aparte), para que progreso y
+cancelación funcionen igual que en el resto de tareas largas de la app.
+
+`GeneratorNSF` (el vocoder HiFi-GAN de `voice_conversion/synthesizer.py`) calcula el padding de cada
+capa de sobremuestreo como `(kernel_size - stride) // 2`. Si para algún `upsample_rate` se elige un
+`kernel_size` con la paridad contraria (por ejemplo kernel par y stride impar), la división entera
+trunca el padding y la salida de esa capa queda desalineada en longitud respecto a lo que esperan las
+capas siguientes — un fallo que solo aparece al ejecutar el modelo, nunca al sólo cargar los pesos.
+Detectado escribiendo los tests de conversión de voz; la lección para cualquier config de modelo nueva
+que se añada aquí: `kernel_size - stride` tiene que ser par en cada capa de `ups`.
+
 ## Búsqueda de canciones
 
 `SearchDialog` ejecuta la búsqueda y la descarga en un `QThread` aparte (ver `ui/search_dialog.py`),
@@ -209,6 +240,6 @@ karaoke (reproducir y pulsar "Marcar" al empezar cada línea), guardando los tie
 
 ## Tests
 
-282 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
+348 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
 control del test, y Qt corre en modo *offscreen*. Lo que no se puede automatizar está documentado como
 prueba manual en `docs/MANUAL_TESTS.md`.

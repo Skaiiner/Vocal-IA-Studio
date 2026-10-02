@@ -19,8 +19,10 @@ from PySide6.QtWidgets import (
 from vocal_ai_studio.session import Session
 from vocal_ai_studio.ui.ai_coach_view import AiCoachView
 from vocal_ai_studio.ui.pitch_editor_view import PitchEditorView
+from vocal_ai_studio.ui.separation_view import SeparationView
 from vocal_ai_studio.ui.settings_view import SettingsView
 from vocal_ai_studio.ui.song_view import SongView
+from vocal_ai_studio.ui.voice_conversion_view import VoiceConversionView
 from vocal_ai_studio.ui.voice_lab_view import VoiceLabView
 from vocal_ai_studio.ui.voice_view import VoiceView
 from vocal_ai_studio.ui.widgets import placeholder_tab, show_error
@@ -78,6 +80,12 @@ class MainWindow(QMainWindow):
         self.ai_coach_view = AiCoachView(session)
         self.ai_coach_view.status.connect(self.show_status)
         self.tabs.addTab(self.ai_coach_view, "AI Coach")
+        self.separation_view = SeparationView(session)
+        self.separation_view.status.connect(self.show_status)
+        self.tabs.addTab(self.separation_view, "Separar voz/instrumental")
+        self.voice_conversion_view = VoiceConversionView(session)
+        self.voice_conversion_view.status.connect(self.show_status)
+        self.tabs.addTab(self.voice_conversion_view, "Conversión de voz")
         for name, desc, bullets in FUTURE_TABS:
             index = self.tabs.addTab(placeholder_tab(name, desc, bullets), name)
             self.tabs.setTabToolTip(index, "Llegará en una fase posterior")
@@ -136,6 +144,8 @@ class MainWindow(QMainWindow):
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
         self.ai_coach_view.refresh()
+        self.separation_view.refresh()
+        self.voice_conversion_view.refresh()
         self._update_project_label()
         self.show_status(f"Proyecto creado en {project.root}")
 
@@ -155,6 +165,8 @@ class MainWindow(QMainWindow):
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
         self.ai_coach_view.refresh()
+        self.separation_view.refresh()
+        self.voice_conversion_view.refresh()
         self._update_project_label()
         self.show_status(f"Proyecto abierto: {path}")
 
@@ -185,6 +197,8 @@ class MainWindow(QMainWindow):
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
         self.ai_coach_view.refresh()
+        self.separation_view.refresh()
+        self.voice_conversion_view.refresh()
         self._update_project_label()
         self.show_status(f"Guardado como {project.root}")
 
@@ -200,12 +214,18 @@ class MainWindow(QMainWindow):
             self.voice_lab_view.refresh()
         elif widget is self.ai_coach_view:
             self.ai_coach_view.refresh()
+        elif widget is self.separation_view:
+            self.separation_view.refresh()
+        elif widget is self.voice_conversion_view:
+            self.voice_conversion_view.refresh()
 
     def _on_project_data_changed(self) -> None:
         self.voice_view.refresh()
         self.pitch_editor_view.refresh()
         self.voice_lab_view.refresh()
         self.ai_coach_view.refresh()
+        self.separation_view.refresh()
+        self.voice_conversion_view.refresh()
 
     def _update_project_label(self) -> None:
         project = self.session.project

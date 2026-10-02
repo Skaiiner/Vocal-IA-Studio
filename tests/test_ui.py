@@ -30,7 +30,8 @@ def window(qtbot, backend, tmp_path):
 
 def test_window_has_expected_tabs(window):
     titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert titles == ["Song", "Voice", "Pitch Editor", "Voice Lab", "AI Coach", "Live Voice", "Settings"]
+    assert titles == ["Song", "Voice", "Pitch Editor", "Voice Lab", "AI Coach",
+                       "Separar voz/instrumental", "Conversión de voz", "Live Voice", "Settings"]
 
 
 def test_transport_disabled_without_audio(window):
@@ -392,7 +393,8 @@ def test_lyrics_panel_highlights_current_line_during_playback(window):
 
 def test_voice_tab_is_present_and_disabled_without_voice(window):
     titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert titles == ["Song", "Voice", "Pitch Editor", "Voice Lab", "AI Coach", "Live Voice", "Settings"]
+    assert titles == ["Song", "Voice", "Pitch Editor", "Voice Lab", "AI Coach",
+                       "Separar voz/instrumental", "Conversión de voz", "Live Voice", "Settings"]
     window.voice_view.refresh()
     assert window.voice_view.btn_analyze.isEnabled() is False
 
@@ -647,3 +649,27 @@ def test_level_meter_renders(qtbot):
 def test_format_time():
     assert format_time(0) == "00:00.0"
     assert format_time(65.4) == "01:05.4"
+
+
+def test_separation_tab_disabled_without_song(window):
+    window.separation_view.refresh()
+    assert window.separation_view.btn_separate.isEnabled() is False
+    assert window.separation_view.btn_use_vocals.isEnabled() is False
+    assert window.separation_view.btn_use_instrumental.isEnabled() is False
+
+
+def test_separation_tab_enabled_with_song(window):
+    window.session.project.set_song(tone(seconds=0.4, freq=330.0, channels=1), "Canción")
+    window.separation_view.refresh()
+    assert window.separation_view.btn_separate.isEnabled() is True
+
+
+def test_voice_conversion_tab_disabled_without_vocal(window):
+    window.voice_conversion_view.refresh()
+    assert window.voice_conversion_view.btn_convert.isEnabled() is False
+
+
+def test_voice_conversion_tab_enabled_with_vocal(window):
+    window.session.project.add_take(tone(seconds=0.4, freq=440.0, channels=1))
+    window.voice_conversion_view.refresh()
+    assert window.voice_conversion_view.btn_convert.isEnabled() is True

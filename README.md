@@ -3,14 +3,16 @@
 Estudio vocal de escritorio para practicar canto y modificar la voz. **Todo el procesamiento es local**:
 tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 
-> **Estado: Fases 1 a 5 completadas y verificadas.** Ya puedes importar canciones, reproducirlas,
+> **Estado: Fases 1 a 6 completadas y verificadas.** Ya puedes importar canciones, reproducirlas,
 > grabar tu voz en varias tomas, exportar el resultado, **analizar tu afinación** (notas, cents,
 > estabilidad, rango, vibrato, pausas, BPM y tonalidad) con un **indicador de tu nota en vivo mientras
 > cantas**, **corregir la afinación** (autotune con modos predefinidos, o editando nota a nota a mano),
-> retocar la voz en **Voice Lab** (formantes, brillo, peso vocal, efectos y presets) y recibir
-> **feedback de un AI Coach** (puntos fuertes, a mejorar y ejercicios, con reglas locales o IA vía Ollama).
-> Las fases 6–8 (separación voz/instrumental, voice conversion, tiempo real, OBS/Discord) están
-> diseñadas en la arquitectura pero todavía no implementadas. Ver [Hoja de ruta](#hoja-de-ruta).
+> retocar la voz en **Voice Lab** (formantes, brillo, peso vocal, efectos y presets), recibir
+> **feedback de un AI Coach** (puntos fuertes, a mejorar y ejercicios, con reglas locales o IA vía Ollama),
+> **separar una canción en voz e instrumental** (Demucs) y **convertir tu voz con un modelo entrenado**
+> (arquitectura RVC v2), todo procesado en local. Las fases 7–8 (tiempo real, micrófono virtual,
+> OBS/Discord) están diseñadas en la arquitectura pero todavía no implementadas.
+> Ver [Hoja de ruta](#hoja-de-ruta).
 
 ## Qué hace hoy
 
@@ -33,7 +35,9 @@ tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 | **Editor manual de afinación**: transportar, excluir, dividir y unir notas, arrastrando o con botones | ✅ |
 | **Voice Lab**: formantes, brillo, peso vocal, efectos y presets | ✅ |
 | **AI Coach**: feedback, puntos fuertes, a mejorar y ejercicios (reglas locales u Ollama) | ✅ |
-| Separación voz/instrumental, voice conversion, OBS/Discord | 🚧 Fases 6–8 |
+| **Separar voz/instrumental** de una canción (Demucs) y usar el resultado directamente | ✅ |
+| **Conversión de voz** con un modelo RVC entrenado (transposición, protect, index rate...) | ✅ |
+| Tiempo real, micrófono virtual, OBS/Discord | 🚧 Fases 7–8 |
 
 ## Instalación
 
@@ -230,11 +234,13 @@ La arquitectura y las decisiones técnicas están en [ARCHITECTURE.md](ARCHITECT
 | 3 | Autotune (Natural/Balanced/Hard/Extreme) y editor manual de pitch | ✅ Hecha |
 | 4 | Voice Lab: formantes, brillo, peso vocal, efectos y presets | ✅ Hecha |
 | 5 | AI Coach: feedback y ejercicios, con IA local (Ollama) | ✅ Hecha |
-| 6 | Separación voz/instrumental (Demucs), voice conversion, YouTube | Siguiente |
-| 7 | Tiempo real, micrófono virtual, OBS y Discord | Pendiente |
+| 6 | Separación voz/instrumental (Demucs) y conversión de voz (RVC) | ✅ Hecha |
+| 7 | Tiempo real, micrófono virtual, OBS y Discord | Siguiente |
 | 8 | Optimización, ejecutable `.exe`, documentación final | Pendiente |
 
 ## Licencias
 
 Software libre: PySide6 (LGPL v3), numpy/scipy/soundfile/sounddevice (BSD/MIT),
-imageio-ffmpeg (BSD; incluye un binario de FFmpeg bajo LGPL), psutil (BSD), yt-dlp (Unlicense).
+imageio-ffmpeg (BSD; incluye un binario de FFmpeg bajo LGPL), psutil (BSD), yt-dlp (Unlicense),
+torch (BSD), demucs (MIT) y transformers (Apache 2.0). La arquitectura de conversión de voz (RVC v2)
+usada en `voice_conversion/` también es MIT.
