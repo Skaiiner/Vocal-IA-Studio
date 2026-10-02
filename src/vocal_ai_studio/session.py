@@ -6,9 +6,10 @@ from pathlib import Path
 from vocal_ai_studio.ai.feedback import CoachFeedback
 from vocal_ai_studio.ai.providers import LocalRulesProvider, OllamaProvider
 from vocal_ai_studio.ai import rules as coach_rules
-from vocal_ai_studio.audio.io import AudioData
+from vocal_ai_studio.audio.io import AudioData, load_audio, save_audio
 from vocal_ai_studio.core.config import Settings, SettingsStore
 from vocal_ai_studio.core.errors import AppError
+from vocal_ai_studio.core.hardware import detect_hardware
 from vocal_ai_studio.core.interfaces import AudioBackend, PitchTrack
 from vocal_ai_studio.lyrics.model import Lyrics, parse_text
 from vocal_ai_studio.pitch.correction import (
@@ -21,6 +22,7 @@ from vocal_ai_studio.effects.chain import VoiceLabSettings, apply_chain
 from vocal_ai_studio.pitch.shifter import psola_resynthesize
 from vocal_ai_studio.playback.player import Player
 from vocal_ai_studio.recording.recorder import Recorder
+from vocal_ai_studio.separation.demucs_separator import DemucsSeparator
 from vocal_ai_studio.song_import.importer import import_song, import_vocal, import_vocal_as_take
 from vocal_ai_studio.song_import.sources import (
     Cancelled,
@@ -31,6 +33,7 @@ from vocal_ai_studio.song_import.sources import (
 )
 from vocal_ai_studio.storage import exporter
 from vocal_ai_studio.storage.project import Project, TakeInfo
+from vocal_ai_studio.voice_conversion.model import RVCVoiceConversionModel
 from vocal_ai_studio.voice_analysis import metrics as vocal_metrics
 from vocal_ai_studio.voice_analysis import song as song_metrics
 from vocal_ai_studio.voice_analysis.metrics import VocalAnalysis
@@ -342,6 +345,93 @@ class Session:
         label = settings.preset_name if settings.preset_name != "Custom" else "procesada"
         project.rename_take(take.id, f"{take.name} ({label})")
         self.save_voice_lab(settings)
+        self.refresh_tracks()
+        return project.get_take(take.id)  # type: ignore[return-value]
+
+    # --- separación voz/instrumental (Demucs) ---
+    _SEPARATION_KEY = "separation_song"
+
+    def separate_song(
+        self,
+        progress: Progress | None = None,
+        cancelled: Cancelled | None = None,
+    ) -> dict[str, AudioData]:
+        project = self._require_project()
+        song = project.load_song()
+        if song is None:
+            raise AppError("No hay canción para separar.", "No se ha importado ninguna canción.",
+                           "Importa una canción en la pestaña Song.")
+        separator = DemucsSeparator()
+        stems = separator.separate(song.to_mono(), song.samplerate, progress, cancelled)
+        vocals = AudioData(stems["vocals"], song.samplerate)
+        instrumental = AudioData(stems["instrumental"], song.samplerate)
+        save_audio(project.path("separated", "vocals.wav"), vocals, "wav")
+        save_audio(project.path("separated", "instrumental.wav"), instrumental, "wav")
+        project.save_analysis_json(self._SEPARATION_KEY, {"done": True})
+        return {"vocals": vocals, "instrumental": instrumental}
+
+    def load_separation(self) -> dict[str, AudioData] | None:
+        project = self._require_project()
+        if not project.load_analysis_json(self._SEPARATION_KEY):
+            return None
+        vocals_path = project.path("separated", "vocals.wav")
+        instrumental_path = project.path("separated", "instrumental.wav")
+        if not vocals_path.exists() or not instrumental_path.exists():
+            return None
+        return {
+            "vocals": load_audio(vocals_path, samplerate=project.samplerate),
+            "instrumental": load_audio(instrumental_path, samplerate=project.samplerate),
+        }
+
+    def use_separated_instrumental_as_song(self) -> None:
+        project = self._require_project()
+        separation = self.load_separation()
+        if separation is None:
+            raise AppError("No hay separación disponible.", "Todavía no se separó la canción.",
+                           "Pulsa Separar en la pestaña de separación antes de usar el resultado.")
+        project.set_song(separation["instrumental"], f"{project.data.song_title} (instrumental)")
+        self.refresh_tracks()
+
+    def use_separated_vocals_as_take(self) -> TakeInfo:
+        project = self._require_project()
+        separation = self.load_separation()
+        if separation is None:
+            raise AppError("No hay separación disponible.", "Todavía no se separó la canción.",
+                           "Pulsa Separar en la pestaña de separación antes de usar el resultado.")
+        take = project.add_take(separation["vocals"], offset_sec=0.0)
+        project.rename_take(take.id, f"{take.name} (voz separada)")
+        self.refresh_tracks()
+        return project.get_take(take.id)  # type: ignore[return-value]
+
+    # --- conversión de voz (RVC) ---
+    def convert_voice(
+        self,
+        model_path: str,
+        index_path: str | None = None,
+        transpose: float = 0.0,
+        protect: float = 0.33,
+        index_rate: float = 0.0,
+        rms_mix_rate: float = 1.0,
+        progress: Progress | None = None,
+        cancelled: Cancelled | None = None,
+    ) -> TakeInfo:
+        project = self._require_project()
+        vocal = project.active_vocal()
+        if vocal is None:
+            raise AppError("No hay voz para convertir.", "No hay ninguna toma ni voz importada.",
+                           "Graba una toma o usa Import Vocal en la pestaña Song.")
+        audio, offset = vocal
+        device = detect_hardware().recommended_device
+        model = RVCVoiceConversionModel()
+        model.load(device)
+        converted = model.convert(
+            audio.to_mono(), audio.samplerate,
+            model_path=model_path, index_path=index_path, transpose=transpose,
+            protect=protect, index_rate=index_rate, rms_mix_rate=rms_mix_rate,
+            progress=progress, cancelled=cancelled,
+        )
+        take = project.add_take(AudioData(converted, audio.samplerate), offset_sec=offset)
+        project.rename_take(take.id, f"{take.name} (conversión de voz)")
         self.refresh_tracks()
         return project.get_take(take.id)  # type: ignore[return-value]
 

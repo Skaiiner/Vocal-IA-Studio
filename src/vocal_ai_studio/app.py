@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -10,6 +11,18 @@ from vocal_ai_studio.core.hardware import detect_hardware
 from vocal_ai_studio.core.logging_setup import setup_logging
 
 log = logging.getLogger(__name__)
+
+
+def _configure_ml_cache(home: Path) -> None:
+    # Modelos de IA (PyTorch/Demucs/HuggingFace) deben cachearse en la carpeta del proyecto
+    # (normalmente en D:), nunca en el perfil de usuario de C: donde puede no haber espacio.
+    cache = home / ".cache"
+    for sub in ("torch", "hf", "pip"):
+        (cache / sub).mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("TORCH_HOME", str(cache / "torch"))
+    os.environ.setdefault("HF_HOME", str(cache / "hf"))
+    os.environ.setdefault("HF_HUB_CACHE", str(cache / "hf" / "hub"))
+    os.environ.setdefault("XDG_CACHE_HOME", str(cache))
 
 
 def _install_excepthook(log_file: Path) -> None:
@@ -34,6 +47,7 @@ def _install_excepthook(log_file: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     home = data_dir()
+    _configure_ml_cache(home)
     log_file = setup_logging(home / "logs")
     load_dotenv(home / ".env")
     log.info("--- Vocal AI Studio ---")

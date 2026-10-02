@@ -17,10 +17,14 @@ dependencies = [
     "imageio-ffmpeg>=0.5",
     "psutil>=5.9",
     "yt-dlp>=2024.1",
+    "torch>=2.2",
+    "demucs>=4.0",
+    "transformers>=4.40",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-qt>=4.4"]
+retrieval = ["faiss-cpu>=1.8"]
 
 [project.scripts]
 vocal-ai-studio = "vocal_ai_studio.app:main"
