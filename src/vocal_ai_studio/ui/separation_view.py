@@ -141,7 +141,7 @@ class SeparationView(QWidget):
         self.status.emit("Instrumental separado usado como canción.")
 
     def _update_use_buttons(self) -> None:
-        has_separation = self.session.project is not None and self.session.load_separation() is not None
+        has_separation = self.session.has_separation()
         self.btn_use_vocals.setEnabled(has_separation)
         self.btn_use_instrumental.setEnabled(has_separation)
 

@@ -58,6 +58,7 @@ class Session:
         self.live_voice = LiveVoiceEngine(backend, settings.sample_rate,
                                           settings.input_device, settings.output_device)
         self._record_start_pos = 0.0
+        self._known_separated_tracks: set[str] = set()
 
     # --- ajustes ---
     def save_settings(self) -> None:
@@ -98,6 +99,7 @@ class Session:
     def _load(self, project: Project) -> None:
         self.player.stop()
         self.project = project
+        self._known_separated_tracks.clear()
         self.settings.last_project = str(project.root)
         self.save_settings()
         self.refresh_tracks()
@@ -111,6 +113,7 @@ class Session:
         if self.project is None:
             self.player.set_track("song", None)
             self.player.set_track("vocal", None)
+            self.player.set_track("original_vocal", None)
             return
         song = self.project.load_song()
         self.player.set_track("song", song, gain=self.project.data.song_gain)
@@ -120,6 +123,17 @@ class Session:
         else:
             audio, offset = vocal
             self.player.set_track("vocal", audio, offset_sec=offset, gain=self.project.data.vocal_gain)
+        if not self.has_separation():
+            self.player.set_track("original_vocal", None)
+        else:
+            separation = self.load_separation()
+            self.player.set_track("original_vocal", separation["vocals"],
+                                  gain=self.project.data.original_vocal_gain)
+            # al descubrirse por primera vez, se deja silenciada: no debe oírse hasta que
+            # el usuario decida añadirla manualmente a la mezcla
+            if "original_vocal" not in self._known_separated_tracks:
+                self.player.set_muted("original_vocal", True)
+            self._known_separated_tracks.add("original_vocal")
 
     # --- importación / exportación ---
     def import_song_file(self, path: str | Path) -> AudioData:
@@ -376,7 +390,14 @@ class Session:
         save_audio(project.path("separated", "vocals.wav"), vocals, "wav")
         save_audio(project.path("separated", "instrumental.wav"), instrumental, "wav")
         project.save_analysis_json(self._SEPARATION_KEY, {"done": True})
+        self.refresh_tracks()
         return {"vocals": vocals, "instrumental": instrumental}
+
+    def has_separation(self) -> bool:
+        if self.project is None or not self.project.load_analysis_json(self._SEPARATION_KEY):
+            return False
+        return (self.project.path("separated", "vocals.wav").exists()
+                and self.project.path("separated", "instrumental.wav").exists())
 
     def load_separation(self) -> dict[str, AudioData] | None:
         project = self._require_project()
@@ -518,6 +539,14 @@ class Session:
         self.player.set_gain("vocal", gain)
         if self.project:
             self.project.set_gains(vocal=gain)
+
+    def set_original_vocal_gain(self, gain: float) -> None:
+        self.player.set_gain("original_vocal", gain)
+        if self.project:
+            self.project.set_gains(original_vocal=gain)
+
+    def set_track_muted(self, name: str, muted: bool) -> None:
+        self.player.set_muted(name, muted)
 
     # --- grabación ---
     def start_recording(self, with_backing: bool = True) -> None:

@@ -119,6 +119,47 @@ def test_session_separate_song_without_song_raises(backend, tmp_path):
     s.close()
 
 
+def test_session_separate_song_loads_original_vocal_track_muted(backend, tmp_path, monkeypatch):
+    import soundfile as sf
+
+    import vocal_ai_studio.session as session_mod
+    from vocal_ai_studio.core.config import Settings, SettingsStore
+    from vocal_ai_studio.session import Session
+
+    def fake_separate(self, samples, samplerate, progress=None, cancelled=None):
+        return {
+            "vocals": (samples * 0.5).astype(np.float32),
+            "instrumental": (samples * 0.5).astype(np.float32),
+        }
+
+    monkeypatch.setattr(session_mod.DemucsSeparator, "separate", fake_separate)
+
+    wav = tmp_path / "song.wav"
+    sf.write(str(wav), sine(seconds=0.3), SR)
+
+    s = Session(backend, Settings(projects_dir=str(tmp_path / "P")),
+                SettingsStore(tmp_path / "settings.json"))
+    s.new_project("OriginalVocalTrack")
+    s.import_song_file(wav)
+    assert not s.has_separation()
+
+    s.separate_song()
+
+    assert s.has_separation()
+    assert s.player.duration > 0
+    # recién descubierta: no debe oírse hasta que el usuario la active a mano
+    assert s.player.is_muted("original_vocal") is True
+
+    s.player.set_muted("original_vocal", False)
+    s.set_original_vocal_gain(0.7)
+    assert s.project.data.original_vocal_gain == pytest.approx(0.7)
+
+    # un refresh posterior (p. ej. al seleccionar otra toma) no debe volver a silenciarla sola
+    s.refresh_tracks()
+    assert s.player.is_muted("original_vocal") is False
+    s.close()
+
+
 def test_session_use_separated_vocals_as_take(backend, tmp_path, monkeypatch):
     import soundfile as sf
 

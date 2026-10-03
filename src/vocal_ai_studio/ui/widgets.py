@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPushButton,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -35,7 +36,10 @@ def hint(text: str, wrap: bool = True) -> QLabel:
 
 
 class GainSlider(QWidget):
-    def __init__(self, label: str, value: float = 1.0, parent: QWidget | None = None):
+    muted_changed = Signal(bool)
+
+    def __init__(self, label: str, value: float = 1.0, parent: QWidget | None = None,
+                 with_mute: bool = False):
         super().__init__(parent)
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -51,9 +55,32 @@ class GainSlider(QWidget):
         row.addWidget(name)
         row.addWidget(self.slider, 1)
         row.addWidget(self.value_label)
+        self.btn_mute: QPushButton | None = None
+        if with_mute:
+            self.btn_mute = QPushButton("Escuchar")
+            self.btn_mute.setCheckable(True)
+            self.btn_mute.setFixedWidth(90)
+            self.btn_mute.toggled.connect(self._on_mute_toggled)
+            row.addWidget(self.btn_mute)
 
     def gain(self) -> float:
         return self.slider.value() / 100.0
+
+    @property
+    def muted(self) -> bool:
+        return self.btn_mute.isChecked() if self.btn_mute else False
+
+    def set_muted(self, muted: bool) -> None:
+        if self.btn_mute is None:
+            return
+        self.btn_mute.blockSignals(True)
+        self.btn_mute.setChecked(muted)
+        self.btn_mute.setText("Silenciado" if muted else "Escuchar")
+        self.btn_mute.blockSignals(False)
+
+    def _on_mute_toggled(self, checked: bool) -> None:
+        self.btn_mute.setText("Silenciado" if checked else "Escuchar")
+        self.muted_changed.emit(checked)
 
 
 def placeholder_tab(title: str, description: str, bullets: list[str]) -> QWidget:

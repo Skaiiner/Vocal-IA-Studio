@@ -25,6 +25,8 @@ tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 | **Letra**: pegar o importar tu propia letra, y sincronizarla con la canción línea a línea | ✅ |
 | Varias tomas (Take 1, 2, 3…), elegir la activa, renombrar y borrar | ✅ |
 | Mezcla canción/voz con volúmenes independientes | ✅ |
+| **Selector de salida de audio** y botón para reiniciarla si deja de sonar | ✅ |
+| **Mezclador de 3 pistas** (canción, voz original separada, tu voz) con silenciar/escuchar independiente, tras separar | ✅ |
 | Exportar voz, canción o mezcla en WAV / FLAC / MP3 | ✅ |
 | Proyectos con autoguardado (Nuevo, Abrir, Guardar, Guardar como) | ✅ |
 | Ajustes de audio, privacidad y detección de hardware | ✅ |
@@ -180,6 +182,15 @@ adelante.
   canción, sube este valor en milisegundos; las tomas siguientes se adelantarán esa cantidad.
   Valores típicos: 20–80 ms.
 - La app prefiere **WASAPI**, el sistema de audio moderno de Windows, por tener menos latencia.
+- **Salida de audio** (Song): elige por dónde quieres oír la canción y las tomas (altavoces, auriculares,
+  un micrófono virtual...). Si pulsas Play y no se oye nada, suele ser que el dispositivo seleccionado
+  no es el que tienes conectado ahora mismo — cámbialo aquí, o pulsa **"Reiniciar salida"** para reabrir
+  el audio sin cerrar la aplicación.
+- **Mezclador de 3 pistas** (panel Mezcla, en Song): "Canción" (el instrumental/la canción de fondo),
+  "Voz original" (solo aparece tras separar la canción en la pestaña "Separar voz/instrumental": es la
+  voz del cantante original) y "Tu voz" (tu toma activa). Cada una tiene su propio volumen y un botón
+  Escuchar/Silenciado para activarla o apagarla a tu gusto — "Voz original" empieza silenciada la primera
+  vez que aparece, así nunca se mezcla con la tuya a menos que tú decidas activarla.
 
 ## OBS y Discord (voz en vivo)
 
@@ -225,7 +236,7 @@ técnico queda en `logs/app.log` (botón *Abrir carpeta de logs* en Settings).
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest        # 376 tests automáticos
+.\.venv\Scripts\python.exe -m pytest        # 385 tests automáticos
 ```
 
 Los tests no necesitan tarjeta de sonido: usan un backend de audio falso y Qt en modo *offscreen*.

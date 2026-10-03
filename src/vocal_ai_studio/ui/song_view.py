@@ -165,16 +165,26 @@ class SongView(QWidget):
         bottom.setSpacing(10)
 
         mix_panel, mix_box = panel("Mezcla")
-        self.song_gain = GainSlider("Canción")
+        self.song_gain = GainSlider("Canción", with_mute=True)
         self.song_gain.slider.valueChanged.connect(lambda: self.session.set_song_gain(self.song_gain.gain()))
-        self.vocal_gain = GainSlider("Voz")
+        self.song_gain.muted_changed.connect(lambda m: self.session.set_track_muted("song", m))
+        self.original_vocal_gain = GainSlider("Voz original", with_mute=True)
+        self.original_vocal_gain.slider.valueChanged.connect(
+            lambda: self.session.set_original_vocal_gain(self.original_vocal_gain.gain()))
+        self.original_vocal_gain.muted_changed.connect(
+            lambda m: self.session.set_track_muted("original_vocal", m))
+        self.vocal_gain = GainSlider("Tu voz", with_mute=True)
         self.vocal_gain.slider.valueChanged.connect(lambda: self.session.set_vocal_gain(self.vocal_gain.gain()))
+        self.vocal_gain.muted_changed.connect(lambda m: self.session.set_track_muted("vocal", m))
         mix_box.addWidget(self.song_gain)
+        mix_box.addWidget(self.original_vocal_gain)
         mix_box.addWidget(self.vocal_gain)
-        mix_box.addWidget(hint("La voz se silencia mientras grabas para que no se mezcle con la toma nueva."))
-        mix_box.addWidget(hint("¿La canción trae la voz original de otro cantante? Ve a la pestaña "
-                               "«Separar voz/instrumental» para quedarte solo con el instrumental antes "
-                               "de grabar — así tu voz no se mezclará con la del cantante original."))
+        self.hint_separation = hint("¿La canción trae la voz original de otro cantante? Ve a la pestaña "
+                                    "«Separar voz/instrumental» y pulsa Separar: aparecerá aquí mismo una "
+                                    "pista «Voz original» que puedes escuchar o silenciar a tu gusto, "
+                                    "independiente del instrumental y de tu propia voz.")
+        mix_box.addWidget(self.hint_separation)
+        mix_box.addWidget(hint("Tu voz se silencia mientras grabas para que no se mezcle con la toma nueva."))
         mix_box.addStretch(1)
         bottom.addWidget(mix_panel, 1)
 
@@ -473,12 +483,18 @@ class SongView(QWidget):
         vocal = project.active_vocal() if project else None
         self.wave.set_track("vocal", vocal[0] if vocal else None, vocal[1] if vocal else 0.0)
         if project:
-            self.song_gain.slider.blockSignals(True)
-            self.vocal_gain.slider.blockSignals(True)
-            self.song_gain.slider.setValue(int(project.data.song_gain * 100))
-            self.vocal_gain.slider.setValue(int(project.data.vocal_gain * 100))
-            self.song_gain.slider.blockSignals(False)
-            self.vocal_gain.slider.blockSignals(False)
+            for slider, gain, track_name in (
+                (self.song_gain, project.data.song_gain, "song"),
+                (self.vocal_gain, project.data.vocal_gain, "vocal"),
+                (self.original_vocal_gain, project.data.original_vocal_gain, "original_vocal"),
+            ):
+                slider.slider.blockSignals(True)
+                slider.slider.setValue(int(gain * 100))
+                slider.slider.blockSignals(False)
+                slider.set_muted(self.session.player.is_muted(track_name))
+        has_separation = self.session.has_separation()
+        self.original_vocal_gain.setVisible(has_separation)
+        self.hint_separation.setVisible(not has_separation)
         self._refresh_takes()
         self.lyrics_panel.refresh()
         self._update_buttons()
@@ -517,6 +533,8 @@ class SongView(QWidget):
         selected = self.takes_list.currentItem() is not None
         self.btn_rename_take.setEnabled(selected and not recording)
         self.btn_delete_take.setEnabled(selected and not recording)
+        if self.vocal_gain.btn_mute is not None:
+            self.vocal_gain.btn_mute.setEnabled(not recording)
 
     def _tick(self) -> None:
         player = self.session.player

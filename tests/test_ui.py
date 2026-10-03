@@ -128,6 +128,41 @@ def test_gain_sliders_update_project(window):
     assert window.session.project.data.vocal_gain == pytest.approx(1.2)
 
 
+def test_original_vocal_row_hidden_until_separation_exists(window, monkeypatch, tmp_path):
+    import numpy as np
+    import vocal_ai_studio.session as session_mod
+
+    view = window.song_view
+    assert view.original_vocal_gain.isVisible() is False
+    assert view.hint_separation.isVisible() is True
+
+    song_path = tmp_path / "s.wav"
+    save_audio(song_path, tone(seconds=0.4, freq=440, channels=2), "wav")
+    window.session.import_song_file(song_path)
+
+    def fake_separate(self, samples, samplerate, progress=None, cancelled=None):
+        return {
+            "vocals": (samples * 0.5).astype(np.float32),
+            "instrumental": (samples * 0.5).astype(np.float32),
+        }
+
+    monkeypatch.setattr(session_mod.DemucsSeparator, "separate", fake_separate)
+    window.session.separate_song()
+    view.refresh()
+
+    assert view.original_vocal_gain.isVisible() is True
+    assert view.hint_separation.isVisible() is False
+    assert view.original_vocal_gain.muted is True  # silenciada por defecto al descubrirse
+
+
+def test_mute_toggle_updates_player(window):
+    view = window.song_view
+    view.vocal_gain.btn_mute.setChecked(True)
+    assert window.session.player.is_muted("vocal") is True
+    view.vocal_gain.btn_mute.setChecked(False)
+    assert window.session.player.is_muted("vocal") is False
+
+
 def test_new_and_save_as_project_update_header(window, monkeypatch, tmp_path):
     from PySide6.QtWidgets import QInputDialog
 

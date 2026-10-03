@@ -47,6 +47,7 @@ class ProjectData:
     active_take: int = 0                # 0 = ninguna (se usa vocal importado si existe)
     song_gain: float = 1.0
     vocal_gain: float = 1.0
+    original_vocal_gain: float = 1.0
     next_take_id: int = 1
 
 
@@ -303,9 +304,12 @@ class Project:
         vocal = self.load_vocal()
         return (vocal, 0.0) if vocal is not None else None
 
-    def set_gains(self, song: float | None = None, vocal: float | None = None) -> None:
+    def set_gains(self, song: float | None = None, vocal: float | None = None,
+                  original_vocal: float | None = None) -> None:
         if song is not None:
             self.data.song_gain = float(song)
         if vocal is not None:
             self.data.vocal_gain = float(vocal)
+        if original_vocal is not None:
+            self.data.original_vocal_gain = float(original_vocal)
         self.save()

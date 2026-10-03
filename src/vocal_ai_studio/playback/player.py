@@ -39,6 +39,10 @@ class Player:
         self._stream: AudioStream | None = None
         self._sources: list[Callable[[int], np.ndarray | None]] = []
         self._lock = threading.Lock()
+        # gain/mute fijados antes de que la pista exista (p. ej. desde la UI, antes de cargar
+        # audio): se guardan aquí y se aplican en cuanto set_track() cree esa pista.
+        self._pending_gain: dict[str, float] = {}
+        self._pending_muted: dict[str, bool] = {}
 
     # --- pistas ---
     def set_track(self, name: str, audio: AudioData | None, offset_sec: float = 0.0, gain: float | None = None) -> None:
@@ -49,21 +53,32 @@ class Player:
             if audio.samplerate != self.samplerate:
                 raise ValueError("La pista debe tener la frecuencia de muestreo del reproductor.")
             old = tracks.get(name)
+            resolved_gain = gain if gain is not None else (
+                old.gain if old else self._pending_gain.get(name, 1.0))
+            resolved_muted = old.muted if old else self._pending_muted.get(name, False)
             tracks[name] = _Track(
                 conform_channels(audio.samples, CHANNELS),
                 int(round(offset_sec * self.samplerate)),
-                gain if gain is not None else (old.gain if old else 1.0),
-                old.muted if old else False,
+                resolved_gain,
+                resolved_muted,
             )
         self._tracks = tracks  # reemplazo atómico: el callback nunca ve un dict a medio modificar
 
     def set_gain(self, name: str, gain: float) -> None:
+        self._pending_gain[name] = float(gain)
         if name in self._tracks:
             self._tracks[name].gain = float(gain)
 
     def set_muted(self, name: str, muted: bool) -> None:
+        self._pending_muted[name] = bool(muted)
         if name in self._tracks:
             self._tracks[name].muted = bool(muted)
+
+    def is_muted(self, name: str) -> bool:
+        track = self._tracks.get(name)
+        if track is not None:
+            return track.muted
+        return self._pending_muted.get(name, False)
 
     def add_source(self, source: Callable[[int], np.ndarray | None]) -> None:
         self._sources = [*self._sources, source]

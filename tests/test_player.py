@@ -56,6 +56,28 @@ def test_player_mutes_and_gains_tracks(backend):
     p.close()
 
 
+def test_player_mute_set_before_track_exists_is_remembered(backend):
+    p = Player(backend, 44100)
+    p.set_muted("vocal", True)
+    assert p.is_muted("vocal") is True  # todavía no hay pista, pero se recuerda la preferencia
+    p.set_track("vocal", tone(1.0, 440, channels=1, amp=0.5))
+    assert p.is_muted("vocal") is True  # se aplica en cuanto la pista se crea
+    p.play()
+    out = backend.output_stream.pump(2)
+    assert float(np.max(np.abs(out))) == 0.0
+    p.close()
+
+
+def test_player_gain_set_before_track_exists_is_applied(backend):
+    p = Player(backend, 44100)
+    p.set_gain("vocal", 0.0)
+    p.set_track("vocal", tone(1.0, 440, channels=1, amp=0.5))
+    p.play()
+    out = backend.output_stream.pump(2)
+    assert float(np.max(np.abs(out))) == 0.0
+    p.close()
+
+
 def test_player_reports_finish_once(backend):
     p = Player(backend, 44100)
     p.set_track("song", tone(256 * 2 / 44100, 440, channels=2))

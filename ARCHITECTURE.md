@@ -270,6 +270,28 @@ encuentra, sincroniza sola; si no, `ui/lyrics_panel.py` ofrece un modo de sincro
 karaoke (reproducir y pulsar "Marcar" al empezar cada línea), guardando los tiempos en
 `project/lyrics.json`.
 
+## Salida de audio y mezclador de 3 pistas
+
+`Player` reutiliza su mecanismo genérico de pistas con nombre (`set_track`/`set_gain`/`set_muted`) para
+una tercera pista, `"original_vocal"`, cargada desde `Session.load_separation()` cuando existe — así se
+puede escuchar la voz del cantante original de forma independiente al instrumental (`"song"`) y a la
+toma propia (`"vocal"`), sin duplicar el pipeline de audio. La primera vez que esa pista aparece en una
+sesión (`Session._known_separated_tracks`), se silencia automáticamente: la intención es que nunca se
+oiga la voz original mezclada con la tuya a menos que tú la actives a mano, coherente con que separar
+la canción siga siendo una acción manual (botón "Separar" en su propia pestaña).
+
+Al añadir esto apareció un bug ya existente en `Player`: `set_gain`/`set_muted` eran no-ops silenciosos
+si la pista nombrada todavía no existía (p. ej. silenciar "Tu voz" antes de grabar ninguna toma). Se
+corrigió guardando esas preferencias en `_pending_gain`/`_pending_muted` y aplicándolas en cuanto
+`set_track()` crea esa pista por primera vez — lo detectó un test de UI que comprobaba el mute antes de
+tener ninguna toma cargada.
+
+La salida de audio (Song) añade un selector de dispositivo igual al del micrófono y un botón
+"Reiniciar salida" (`Session.restart_audio_output()`) que cierra y reabre el stream de `Player`: existe
+porque `Player.ensure_stream()` solo abre un stream nuevo si `self._stream is None`, así que si el
+dispositivo de salida deja de responder (p. ej. el dispositivo por defecto de Windows cambia o no es el
+que el usuario tiene conectado) no hay otra forma de forzar una reconexión sin cerrar la aplicación.
+
 ## Icono y acceso directo del escritorio
 
 El icono de la app (`assets/icon.ico`/`.png`) se dibuja con `QPainter` en `scripts/generate_icon.py`
@@ -280,6 +302,6 @@ evita que se abra una ventana de consola junto a la app.
 
 ## Tests
 
-376 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
+385 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
 control del test (incluido `FakeDuplexStream` para la E/S dúplex de la voz en vivo), y Qt corre en modo
 *offscreen*. Lo que no se puede automatizar está documentado como prueba manual en `docs/MANUAL_TESTS.md`.

@@ -211,6 +211,7 @@ class MainWindow(QMainWindow):
         widget = self.tabs.widget(index)
         if widget is self.song_view:
             self.song_view.sync_devices()
+            self.song_view.refresh()
         elif widget is self.voice_view:
             self.voice_view.refresh()
         elif widget is self.pitch_editor_view:
