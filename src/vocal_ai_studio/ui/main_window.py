@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import QSize, QTimer, Qt
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from vocal_ai_studio.session import Session
+from vocal_ai_studio.ui import icons
 from vocal_ai_studio.ui.ai_coach_view import AiCoachView
 from vocal_ai_studio.ui.live_voice_view import LiveVoiceView
 from vocal_ai_studio.ui.pitch_editor_view import PitchEditorView
@@ -46,6 +47,13 @@ class MainWindow(QMainWindow):
         layout.setSpacing(8)
 
         header = QHBoxLayout()
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
+        if icon_path.exists():
+            logo = QLabel()
+            logo.setPixmap(QPixmap(str(icon_path)).scaledToHeight(28, Qt.TransformationMode.SmoothTransformation))
+            header.addWidget(logo)
+            header.addSpacing(8)
+            self.setWindowIcon(QIcon(str(icon_path)))
         title = QLabel("VOCAL AI STUDIO")
         title.setObjectName("Title")
         header.addWidget(title)
@@ -58,35 +66,36 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
+        self.tabs.setIconSize(QSize(18, 18))
         self.song_view = SongView(session)
         self.song_view.status.connect(self.show_status)
         self.song_view.project_changed.connect(self._update_project_label)
         self.song_view.project_changed.connect(self._on_project_data_changed)
-        self.tabs.addTab(self.song_view, "Song")
+        self.tabs.addTab(self.song_view, icons.tab_icon("song"), "Song")
         self.voice_view = VoiceView(session)
         self.voice_view.status.connect(self.show_status)
-        self.tabs.addTab(self.voice_view, "Voice")
+        self.tabs.addTab(self.voice_view, icons.tab_icon("voice"), "Voice")
         self.pitch_editor_view = PitchEditorView(session)
         self.pitch_editor_view.status.connect(self.show_status)
-        self.tabs.addTab(self.pitch_editor_view, "Pitch Editor")
+        self.tabs.addTab(self.pitch_editor_view, icons.tab_icon("pitch"), "Pitch Editor")
         self.voice_lab_view = VoiceLabView(session)
         self.voice_lab_view.status.connect(self.show_status)
-        self.tabs.addTab(self.voice_lab_view, "Voice Lab")
+        self.tabs.addTab(self.voice_lab_view, icons.tab_icon("voice_lab"), "Voice Lab")
         self.ai_coach_view = AiCoachView(session)
         self.ai_coach_view.status.connect(self.show_status)
-        self.tabs.addTab(self.ai_coach_view, "AI Coach")
+        self.tabs.addTab(self.ai_coach_view, icons.tab_icon("ai_coach"), "AI Coach")
         self.separation_view = SeparationView(session)
         self.separation_view.status.connect(self.show_status)
-        self.tabs.addTab(self.separation_view, "Separar voz/instrumental")
+        self.tabs.addTab(self.separation_view, icons.tab_icon("separation"), "Separar voz/instrumental")
         self.voice_conversion_view = VoiceConversionView(session)
         self.voice_conversion_view.status.connect(self.show_status)
-        self.tabs.addTab(self.voice_conversion_view, "Conversión de voz")
+        self.tabs.addTab(self.voice_conversion_view, icons.tab_icon("voice_conversion"), "Conversión de voz")
         self.live_voice_view = LiveVoiceView(session)
         self.live_voice_view.status.connect(self.show_status)
-        self.tabs.addTab(self.live_voice_view, "Live Voice")
+        self.tabs.addTab(self.live_voice_view, icons.tab_icon("live_voice"), "Live Voice")
         self.settings_view = SettingsView(session, log_file)
         self.settings_view.status.connect(self.show_status)
-        self.tabs.addTab(self.settings_view, "Settings")
+        self.tabs.addTab(self.settings_view, icons.tab_icon("settings"), "Settings")
         self.tabs.currentChanged.connect(self._on_tab_changed)
         layout.addWidget(self.tabs, 1)
 

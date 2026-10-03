@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     log.info("--- Vocal AI Studio ---")
     log.info("%s", detect_hardware().summary().replace("\n", " | "))
 
+    from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
     from vocal_ai_studio.audio.backends import SoundDeviceBackend
@@ -64,6 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName("Vocal AI Studio")
     app.setStyleSheet(theme.STYLESHEET)
+    icon_path = Path(__file__).parent / "assets" / "icon.ico"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
     _install_excepthook(log_file)
 
     store = SettingsStore(home / "settings.json")

@@ -82,7 +82,11 @@ src/vocal_ai_studio/
 ├── ui/                    PySide6: main_window, song_view, voice_view, pitch_view, pitch_editor_widget,
 │                           pitch_editor_view, settings_view, waveform_widget, background (QThread
 │                           reutilizable), theme, separation_view, voice_conversion_view,
-│                           live_voice_view
+│                           live_voice_view, icons.py (glyphs de las pestañas dibujados con QPainter,
+│                           sin dependencias externas de iconos)
+├── assets/                icon.ico / icon.png: logo de la app (ventana, barra de tareas, acceso
+│                           directo del escritorio). Se regenera con QPainter mediante
+│                           `scripts/generate_icon.py`, no se edita a mano
 └── obs/ discord/
                            Reservados para cuando se documente la integración externa (hoy solo texto)
 ```
@@ -265,6 +269,14 @@ permiso, igual que con el audio. `parse_text()` detecta marcas `[mm:ss.xx]` (for
 encuentra, sincroniza sola; si no, `ui/lyrics_panel.py` ofrece un modo de sincronización manual tipo
 karaoke (reproducir y pulsar "Marcar" al empezar cada línea), guardando los tiempos en
 `project/lyrics.json`.
+
+## Icono y acceso directo del escritorio
+
+El icono de la app (`assets/icon.ico`/`.png`) se dibuja con `QPainter` en `scripts/generate_icon.py`
+— ni se descarga ni se edita a mano, así que no hay un binario de imagen "misterioso" en el repo sin
+saber de dónde salió. `scripts/install.ps1` crea (o recrea) el acceso directo del escritorio apuntando
+a `.venv\Scripts\pythonw.exe -m vocal_ai_studio` con ese icono; `pythonw.exe` en vez de `python.exe`
+evita que se abra una ventana de consola junto a la app.
 
 ## Tests
 

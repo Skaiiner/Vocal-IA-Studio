@@ -60,6 +60,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 
 ## Ejecutar
 
+Hay un acceso directo **"Vocal AI Studio"** en el escritorio: ábrelo con doble clic como cualquier
+otro programa, no hace falta abrir PowerShell para el uso normal.
+
+Para volver a crearlo (por ejemplo tras mover la carpeta del proyecto) o si prefieres la terminal:
+
 ```powershell
 .\scripts\run.ps1
 ```

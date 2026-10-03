@@ -40,4 +40,22 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "`nTodo correcto." -ForegroundColor Green
 }
 
-Write-Host "`nListo. Para abrir la aplicacion:  .\scripts\run.ps1`n" -ForegroundColor Cyan
+$projectRoot = (Get-Location).Path
+$desktop = [Environment]::GetFolderPath('Desktop')
+$shortcutPath = Join-Path $desktop "Vocal AI Studio.lnk"
+$iconPath = Join-Path $projectRoot "src\vocal_ai_studio\assets\icon.ico"
+try {
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($shortcutPath)
+    $sc.TargetPath = Join-Path $projectRoot ".venv\Scripts\pythonw.exe"
+    $sc.Arguments = "-m vocal_ai_studio"
+    $sc.WorkingDirectory = $projectRoot
+    if (Test-Path $iconPath) { $sc.IconLocation = "$iconPath,0" }
+    $sc.Description = "Vocal AI Studio"
+    $sc.Save()
+    Write-Host "Acceso directo creado en el escritorio: $shortcutPath" -ForegroundColor Green
+} catch {
+    Write-Host "No se pudo crear el acceso directo del escritorio: $_" -ForegroundColor Yellow
+}
+
+Write-Host "`nListo. Abre 'Vocal AI Studio' desde el escritorio, o con:  .\scripts\run.ps1`n" -ForegroundColor Cyan

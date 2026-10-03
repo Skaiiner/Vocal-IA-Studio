@@ -155,6 +155,9 @@ class SongView(QWidget):
         mix_box.addWidget(self.song_gain)
         mix_box.addWidget(self.vocal_gain)
         mix_box.addWidget(hint("La voz se silencia mientras grabas para que no se mezcle con la toma nueva."))
+        mix_box.addWidget(hint("¿La canción trae la voz original de otro cantante? Ve a la pestaña "
+                               "«Separar voz/instrumental» para quedarte solo con el instrumental antes "
+                               "de grabar — así tu voz no se mezclará con la del cantante original."))
         mix_box.addStretch(1)
         bottom.addWidget(mix_panel, 1)
 
