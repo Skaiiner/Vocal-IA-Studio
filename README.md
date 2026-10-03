@@ -37,6 +37,7 @@ tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 | **AI Coach**: feedback, puntos fuertes, a mejorar y ejercicios (reglas locales u Ollama) | ✅ |
 | **Separar voz/instrumental** de una canción (Demucs) y usar el resultado directamente | ✅ |
 | **Conversión de voz** con un modelo RVC entrenado (transposición, protect, index rate...) | ✅ |
+| **Voz en vivo**: micrófono procesado en tiempo real (presets, bypass, dry/wet) hacia OBS/Discord | ✅ |
 | Tiempo real, micrófono virtual, OBS/Discord | 🚧 Fases 7–8 |
 
 ## Instalación
@@ -175,18 +176,20 @@ adelante.
   Valores típicos: 20–80 ms.
 - La app prefiere **WASAPI**, el sistema de audio moderno de Windows, por tener menos latencia.
 
-## OBS y Discord
+## OBS y Discord (voz en vivo)
 
-Todavía no implementado — llega en la **Fase 7**. La arquitectura prevista es:
+La pestaña **Live Voice** procesa tu micrófono en tiempo real con la misma cadena de efectos que
+Voice Lab (formantes, EQ, de-esser, compresor, reverb, delay), con presets, bypass y mezcla dry/wet:
 
 ```
-Micrófono → Vocal AI Studio → procesamiento → dispositivo de audio virtual → OBS / Discord
+Micrófono → Vocal AI Studio (Live Voice) → dispositivo de audio virtual → OBS / Discord
 ```
 
-Hará falta instalar un dispositivo de audio virtual gratuito ([VB-CABLE](https://vb-audio.com/Cable/)
-o [VoiceMeeter](https://vb-audio.com/Voicemeeter/)), porque Windows no permite crear micrófonos
-virtuales desde una aplicación normal: es un driver del sistema. Se documentará paso a paso al llegar
-a esa fase.
+Para que OBS o Discord usen tu voz procesada en vez del micrófono real, hace falta un dispositivo de
+audio virtual, porque Windows no permite crear micrófonos virtuales desde una aplicación normal: es un
+driver del sistema. Instala **VB-CABLE** o **VoiceMeeter** (búscalos en tu navegador; no se instalan
+desde aquí), pulsa "Volver a buscar dispositivos" en Live Voice y selecciónalo como **salida en vivo**.
+Luego, en OBS/Discord, elige ese mismo dispositivo virtual como su micrófono de entrada.
 
 ## Privacidad
 
@@ -217,7 +220,7 @@ técnico queda en `logs/app.log` (botón *Abrir carpeta de logs* en Settings).
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest        # 282 tests automáticos
+.\.venv\Scripts\python.exe -m pytest        # 376 tests automáticos
 ```
 
 Los tests no necesitan tarjeta de sonido: usan un backend de audio falso y Qt en modo *offscreen*.
@@ -235,8 +238,8 @@ La arquitectura y las decisiones técnicas están en [ARCHITECTURE.md](ARCHITECT
 | 4 | Voice Lab: formantes, brillo, peso vocal, efectos y presets | ✅ Hecha |
 | 5 | AI Coach: feedback y ejercicios, con IA local (Ollama) | ✅ Hecha |
 | 6 | Separación voz/instrumental (Demucs) y conversión de voz (RVC) | ✅ Hecha |
-| 7 | Tiempo real, micrófono virtual, OBS y Discord | Siguiente |
-| 8 | Optimización, ejecutable `.exe`, documentación final | Pendiente |
+| 7 | Tiempo real, micrófono virtual, OBS y Discord | ✅ Hecha |
+| 8 | Optimización, ejecutable `.exe`, documentación final | Siguiente |
 
 ## Licencias
 

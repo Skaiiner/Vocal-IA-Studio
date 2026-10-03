@@ -21,6 +21,7 @@ from vocal_ai_studio.pitch.correction import (
 from vocal_ai_studio.effects.chain import VoiceLabSettings, apply_chain
 from vocal_ai_studio.pitch.shifter import psola_resynthesize
 from vocal_ai_studio.playback.player import Player
+from vocal_ai_studio.realtime.engine import LiveVoiceEngine
 from vocal_ai_studio.recording.recorder import Recorder
 from vocal_ai_studio.separation.demucs_separator import DemucsSeparator
 from vocal_ai_studio.song_import.importer import import_song, import_vocal, import_vocal_as_take
@@ -54,6 +55,8 @@ class Session:
         self.recorder.gain = settings.input_gain
         self.recorder.monitor = settings.monitor_input
         self.player.add_source(self.recorder.monitor_source)
+        self.live_voice = LiveVoiceEngine(backend, settings.sample_rate,
+                                          settings.input_device, settings.output_device)
         self._record_start_pos = 0.0
 
     # --- ajustes ---
@@ -62,12 +65,17 @@ class Session:
             self.store.save(self.settings)
 
     def apply_devices(self, input_device: str | None = None, output_device: str | None = None) -> None:
+        devices_changed = False
         if output_device is not None and output_device != self.settings.output_device:
             self.settings.output_device = output_device
             self.player.set_output_device(output_device)
+            devices_changed = True
         if input_device is not None and input_device != self.settings.input_device:
             self.settings.input_device = input_device
             self.recorder.set_device(input_device)
+            devices_changed = True
+        if devices_changed:
+            self.live_voice.set_devices(self.settings.input_device, self.settings.output_device)
         self.save_settings()
 
     # --- proyecto ---
@@ -559,7 +567,10 @@ class Session:
         try:
             self.recorder.close()
         finally:
-            self.player.close()
+            try:
+                self.live_voice.close()
+            finally:
+                self.player.close()
 
 
 def _cleanup(folder: Path) -> None:

@@ -26,6 +26,9 @@ class AudioStream(Protocol):
     def stop(self) -> None: ...
     def close(self) -> None: ...
 
+    @property
+    def latency(self) -> float: ...
+
 
 class AudioBackend(Protocol):
     def input_devices(self) -> list[DeviceInfo]: ...
@@ -38,6 +41,13 @@ class AudioBackend(Protocol):
 
     def open_input(
         self, device: str, samplerate: int, channels: int, callback: Callable[[np.ndarray], None]
+    ) -> AudioStream:
+        ...
+
+    def open_duplex(
+        self, input_device: str, output_device: str, samplerate: int,
+        input_channels: int, output_channels: int, blocksize: int,
+        callback: Callable[[np.ndarray, np.ndarray], None],
     ) -> AudioStream:
         ...
 

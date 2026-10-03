@@ -41,6 +41,10 @@ class FakeStream:
         self.running = False
         self.closed = True
 
+    @property
+    def latency(self) -> float:
+        return 0.01
+
     def pump(self, blocks: int = 1, indata: np.ndarray | None = None) -> np.ndarray:
         out_blocks = []
         for _ in range(blocks):
@@ -54,12 +58,47 @@ class FakeStream:
         return np.concatenate(out_blocks, axis=0) if out_blocks else np.zeros((0, self.channels), np.float32)
 
 
+class FakeDuplexStream:
+    def __init__(self, backend: "FakeBackend", callback, frames: int, in_channels: int, out_channels: int):
+        self.backend = backend
+        self.callback = callback
+        self.frames = frames
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.running = False
+        self.closed = False
+
+    def start(self) -> None:
+        self.running = True
+
+    def stop(self) -> None:
+        self.running = False
+
+    def close(self) -> None:
+        self.running = False
+        self.closed = True
+
+    @property
+    def latency(self) -> float:
+        return 0.01
+
+    def pump(self, blocks: int = 1, indata: np.ndarray | None = None) -> np.ndarray:
+        out_blocks = []
+        for _ in range(blocks):
+            block_in = indata if indata is not None else np.full((self.frames, self.in_channels), 0.25, np.float32)
+            outdata = np.zeros((self.frames, self.out_channels), np.float32)
+            self.callback(block_in.astype(np.float32), outdata)
+            out_blocks.append(outdata.copy())
+        return np.concatenate(out_blocks, axis=0) if out_blocks else np.zeros((0, self.out_channels), np.float32)
+
+
 class FakeBackend:
     def __init__(self, block_frames: int = 256, fail_input_channels: set[int] | None = None):
         self.block_frames = block_frames
         self.fail_input_channels = fail_input_channels or set()
         self.output_stream: FakeStream | None = None
         self.input_stream: FakeStream | None = None
+        self.duplex_stream: FakeDuplexStream | None = None
         self.opened_devices: list[tuple[str, str]] = []
         self.lock = threading.Lock()
 
@@ -80,6 +119,12 @@ class FakeBackend:
         self.opened_devices.append(("input", device))
         self.input_stream = FakeStream(self, callback, self.block_frames, channels, is_input=True)
         return self.input_stream
+
+    def open_duplex(self, input_device, output_device, samplerate, input_channels, output_channels,
+                    blocksize, callback):
+        self.opened_devices.append(("duplex", f"{input_device}|{output_device}"))
+        self.duplex_stream = FakeDuplexStream(self, callback, blocksize, input_channels, output_channels)
+        return self.duplex_stream
 
 
 @pytest.fixture

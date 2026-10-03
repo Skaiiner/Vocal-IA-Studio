@@ -673,3 +673,46 @@ def test_voice_conversion_tab_enabled_with_vocal(window):
     window.session.project.add_take(tone(seconds=0.4, freq=440.0, channels=1))
     window.voice_conversion_view.refresh()
     assert window.voice_conversion_view.btn_convert.isEnabled() is True
+
+
+def test_live_voice_tab_lists_devices(window):
+    view = window.live_voice_view
+    assert view.cmb_input.count() >= 1
+    assert view.cmb_output.count() >= 1
+
+
+def test_live_voice_start_stop_toggles_engine(window):
+    view = window.live_voice_view
+    view.btn_start.setChecked(True)
+    assert window.session.live_voice.is_running is True
+    assert view.btn_start.text() == "Detener voz en vivo"
+    view.btn_start.setChecked(False)
+    assert window.session.live_voice.is_running is False
+    assert view.btn_start.text() == "Iniciar voz en vivo"
+
+
+def test_live_voice_bypass_and_dry_wet_propagate_to_engine(window):
+    view = window.live_voice_view
+    view.chk_bypass.setChecked(True)
+    assert window.session.live_voice.bypass is True
+    view.dry_wet_slider.setValue(40)
+    assert window.session.live_voice.dry_wet == pytest.approx(0.4)
+    assert view.lbl_dry_wet.text() == "40% procesada"
+
+
+def test_live_voice_preset_updates_engine_settings(window):
+    view = window.live_voice_view
+    idx = view.cmb_preset.findText("Rock")
+    view.cmb_preset.setCurrentIndex(idx)
+    assert window.session.live_voice.settings.preset_name == "Rock"
+
+
+def test_live_voice_tick_updates_meters_only_while_running(window, backend):
+    view = window.live_voice_view
+    view.tick()
+    assert view.meter_in._level == 0.0
+    view.btn_start.setChecked(True)
+    backend.duplex_stream.pump(1, np.full((backend.duplex_stream.frames, 1), 0.5, np.float32))
+    view.tick()
+    assert view.meter_in._level > 0.0
+    view.btn_start.setChecked(False)

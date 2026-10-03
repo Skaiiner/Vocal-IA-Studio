@@ -71,11 +71,20 @@ src/vocal_ai_studio/
 │   └── model.py           RVCVoiceConversionModel: pipeline completo (F0 + contenido + síntesis), progreso/cancelación
 ├── session.py             Une proyecto + reproductor + grabador + análisis + corrección + separación +
 │                           conversión de voz (la UI solo habla con esto)
+├── realtime/
+│   ├── streaming_effects.py  Versiones con estado (bloque a bloque) de los efectos de Voice Lab:
+│   │                         StreamingEq, StreamingDeEsser, StreamingCompressor, StreamingReverb,
+│   │                         StreamingDelay, StreamingFormantShifter y StreamingChain, que los
+│   │                         encadena igual que `effects.chain.apply_chain` — Fase 7
+│   └── engine.py             LiveVoiceEngine: E/S dúplex vía `AudioBackend.open_duplex`, bypass,
+│                               mezcla dry/wet, medidores de nivel y uso de CPU; detect_virtual_devices
+│                               para avisar si hay VB-CABLE/VoiceMeeter instalado — Fase 7
 ├── ui/                    PySide6: main_window, song_view, voice_view, pitch_view, pitch_editor_widget,
 │                           pitch_editor_view, settings_view, waveform_widget, background (QThread
-│                           reutilizable), theme, separation_view, voice_conversion_view
-└── realtime/ obs/ discord/
-                           Reservados para la fase 7 (hoy solo documentación)
+│                           reutilizable), theme, separation_view, voice_conversion_view,
+│                           live_voice_view
+└── obs/ discord/
+                           Reservados para cuando se documente la integración externa (hoy solo texto)
 ```
 
 ### Regla de dependencias
@@ -102,6 +111,7 @@ puntos de extensión de las fases siguientes:
 | `AIProvider` | Implementado por `LocalRulesProvider` (reglas sin red) y `OllamaProvider` (modelo local vía Ollama); intercambiables, la UI no distingue cuál responde. | 5 ✅ |
 | `SourceSeparator` | Implementado por `DemucsSeparator` (htdemucs), con progreso y cancelación. | 6 ✅ |
 | `VoiceConversionModel` | Implementado por `RVCVoiceConversionModel` (arquitectura RVC v2, MIT, `requires_gpu = False` aunque usa CUDA si hay GPU disponible). | 6 ✅ |
+| `AudioBackend.open_duplex` / `AudioStream.latency` | E/S de audio dúplex sincronizada (misma llamada `sd.Stream`, no dos streams independientes) para el motor de voz en vivo; `latency` se añadió al Protocol porque `LiveVoiceEngine` la necesita para mostrarla en la UI. Implementado por `SoundDeviceBackend`; en los tests, por `FakeBackend.open_duplex`/`FakeDuplexStream`. | 7 ✅ |
 
 Antes de integrar un modelo hay que comprobar licencia, requisitos, rendimiento y si necesita GPU;
 la interfaz `VoiceConversionModel` obliga a declarar `license` y `requires_gpu` precisamente por eso.
@@ -220,6 +230,24 @@ capas siguientes — un fallo que solo aparece al ejecutar el modelo, nunca al s
 Detectado escribiendo los tests de conversión de voz; la lección para cualquier config de modelo nueva
 que se añada aquí: `kernel_size - stride` tiene que ser par en cada capa de `ups`.
 
+## Voz en vivo: por qué cada efecto necesita una versión "con estado"
+
+Los efectos de Voice Lab (`effects/`) procesan la toma completa de una vez: por ejemplo el delay
+offline alarga el array para sumar los ecos, y el formant shifter normaliza con el RMS de todo el
+audio. Ninguna de las dos cosas es posible en tiempo real, porque el motor solo ve bloques de 512
+muestras y no puede mirar al futuro. Por eso `realtime/streaming_effects.py` reimplementa cada efecto
+como una clase que guarda su estado (filtros `sosfilt` con `zi`, líneas de retardo circulares, el
+envolvente del compresor, los buffers de solape-suma del vocoder de fase) entre llamadas sucesivas de
+`process()`, bloque a bloque, en vez de recibir el audio entero.
+
+El vocoder de fase (`StreamingFormantShifter`) tiene una trampa de arranque: la normalización
+solape-suma (overlap-add) de la ventana de Hann solo es válida cuando ya se han solapado suficientes
+ventanas (típicamente `n_fft / hop` saltos); antes de eso, dividir por la suma de ventanas al cuadrado
+cerca de los bordes —donde la ventana vale casi cero— puede disparar la salida varias veces por encima
+de la entrada. Se detectó con un test que medía el pico de amplitud tras un cambio de formantes; la
+corrección fuerza silencio durante los primeros `ceil(n_fft/hop)` saltos (ya contados como parte de la
+latencia inherente del vocoder) en vez de confiar en una normalización que todavía no se ha estabilizado.
+
 ## Búsqueda de canciones
 
 `SearchDialog` ejecuta la búsqueda y la descarga en un `QThread` aparte (ver `ui/search_dialog.py`),
@@ -240,6 +268,6 @@ karaoke (reproducir y pulsar "Marcar" al empezar cada línea), guardando los tie
 
 ## Tests
 
-348 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
-control del test, y Qt corre en modo *offscreen*. Lo que no se puede automatizar está documentado como
-prueba manual en `docs/MANUAL_TESTS.md`.
+376 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
+control del test (incluido `FakeDuplexStream` para la E/S dúplex de la voz en vivo), y Qt corre en modo
+*offscreen*. Lo que no se puede automatizar está documentado como prueba manual en `docs/MANUAL_TESTS.md`.

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from vocal_ai_studio.session import Session
 from vocal_ai_studio.ui.ai_coach_view import AiCoachView
+from vocal_ai_studio.ui.live_voice_view import LiveVoiceView
 from vocal_ai_studio.ui.pitch_editor_view import PitchEditorView
 from vocal_ai_studio.ui.separation_view import SeparationView
 from vocal_ai_studio.ui.settings_view import SettingsView
@@ -25,15 +26,9 @@ from vocal_ai_studio.ui.song_view import SongView
 from vocal_ai_studio.ui.voice_conversion_view import VoiceConversionView
 from vocal_ai_studio.ui.voice_lab_view import VoiceLabView
 from vocal_ai_studio.ui.voice_view import VoiceView
-from vocal_ai_studio.ui.widgets import placeholder_tab, show_error
+from vocal_ai_studio.ui.widgets import show_error
 
 log = logging.getLogger(__name__)
-
-FUTURE_TABS = [
-    ("Live Voice", "Voz procesada en tiempo real hacia OBS y Discord. (Fase 7)",
-     ["Entrada, salida, monitorización y latencia", "Bypass y mezcla Dry/Wet",
-      "Micrófono virtual mediante VB-CABLE o VoiceMeeter", "Medidores de nivel y uso de CPU"]),
-]
 
 
 class MainWindow(QMainWindow):
@@ -86,9 +81,9 @@ class MainWindow(QMainWindow):
         self.voice_conversion_view = VoiceConversionView(session)
         self.voice_conversion_view.status.connect(self.show_status)
         self.tabs.addTab(self.voice_conversion_view, "Conversión de voz")
-        for name, desc, bullets in FUTURE_TABS:
-            index = self.tabs.addTab(placeholder_tab(name, desc, bullets), name)
-            self.tabs.setTabToolTip(index, "Llegará en una fase posterior")
+        self.live_voice_view = LiveVoiceView(session)
+        self.live_voice_view.status.connect(self.show_status)
+        self.tabs.addTab(self.live_voice_view, "Live Voice")
         self.settings_view = SettingsView(session, log_file)
         self.settings_view.status.connect(self.show_status)
         self.tabs.addTab(self.settings_view, "Settings")
@@ -102,6 +97,7 @@ class MainWindow(QMainWindow):
         self._timer = QTimer(self)
         self._timer.setInterval(80)
         self._timer.timeout.connect(self.settings_view.tick)
+        self._timer.timeout.connect(self.live_voice_view.tick)
         self._timer.start()
 
     # --- menú ---
@@ -218,6 +214,8 @@ class MainWindow(QMainWindow):
             self.separation_view.refresh()
         elif widget is self.voice_conversion_view:
             self.voice_conversion_view.refresh()
+        elif widget is self.live_voice_view:
+            self.live_voice_view.refresh()
 
     def _on_project_data_changed(self) -> None:
         self.voice_view.refresh()

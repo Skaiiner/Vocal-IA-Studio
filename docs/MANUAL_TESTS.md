@@ -110,3 +110,20 @@ Verificado automáticamente contra el hardware real de este equipo (RTX 5060 Ti,
 ✅ La onda se dibuja en menos de un par de segundos y el zoom responde con fluidez.
 ✅ La reproducción no se entrecorta ni chasquea.
 ✅ Grabar 5 minutos seguidos no agota la memoria ni ralentiza la aplicación.
+
+## P11 · Voz en vivo (pestaña Live Voice)
+1. Ve a **Live Voice**, elige tu micrófono como entrada y tus altavoces como salida (con auriculares
+   puestos, para evitar acoplamiento), y pulsa **Iniciar voz en vivo**.
+2. Habla y prueba cada preset (Pop, Rock, Deep, Radio, Studio); activa **Bypass**; mueve el slider
+   **Dry/Wet** de 0% a 100%.
+3. Deja la voz en vivo activa un par de minutos seguidos.
+
+☐ Se oye tu voz por los altavoces con muy poco retraso perceptible, y cada preset suena distinto.
+☐ Los medidores de entrada y salida se mueven al hablar; **CPU** y **Latencia** muestran valores
+   estables (no en 0% todo el rato ni creciendo sin parar).
+☐ **Bypass** deja pasar tu voz sin ningún efecto, igual que el micrófono directo.
+☐ Con Dry/Wet al 0% se oye tu voz seca; al 100%, completamente procesada.
+☐ No hay clics, cortes ni saturación tras varios minutos seguidos.
+☐ Si tienes VB-CABLE o VoiceMeeter instalado, aparece el aviso de micrófono virtual al pulsar
+   "Volver a buscar dispositivos", y seleccionarlo como salida en vivo permite usar la voz procesada
+   como micrófono de entrada en OBS o Discord.

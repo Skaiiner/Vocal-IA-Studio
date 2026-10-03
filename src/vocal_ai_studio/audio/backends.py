@@ -102,6 +102,27 @@ class SoundDeviceBackend:
             raise explain_exception(exc, "No se pudo abrir el micrófono") from exc
         return _SdStream(stream)
 
+    def open_duplex(self, input_device: str, output_device: str, samplerate: int,
+                    input_channels: int, output_channels: int, blocksize: int,
+                    callback: Callable[[np.ndarray, np.ndarray], None]) -> AudioStream:
+        in_dev = self._resolve(input_device, "input")
+        out_dev = self._resolve(output_device, "output")
+
+        def cb(indata, outdata, frames, time, status):  # noqa: ARG001
+            if status:
+                log.debug("Estado motor en vivo: %s", status)
+            callback(indata, outdata)
+
+        try:
+            stream = sd.Stream(samplerate=samplerate, blocksize=blocksize, dtype="float32",
+                               channels=(input_channels, output_channels),
+                               device=(in_dev.index if in_dev else None, out_dev.index if out_dev else None),
+                               callback=cb,
+                               extra_settings=(self._extra(in_dev), self._extra(out_dev)))
+        except Exception as exc:  # noqa: BLE001
+            raise explain_exception(exc, "No se pudo abrir el motor de voz en tiempo real") from exc
+        return _SdStream(stream)
+
     def max_input_channels(self, device: str) -> int:
         dev = self._resolve(device, "input")
         if dev is not None:
