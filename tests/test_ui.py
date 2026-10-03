@@ -170,6 +170,26 @@ def test_song_tab_has_mic_selector(window):
     assert window.session.recorder.input_device == "Fake Mic [FakeAPI]"
 
 
+def test_song_tab_has_output_selector(window):
+    view = window.song_view
+    assert view.cmb_output.count() >= 2  # predeterminado + altavoz falso
+    assert view.cmb_output.itemText(1) == "Fake Speakers"
+    view.cmb_output.setCurrentIndex(1)
+    assert window.session.settings.output_device == "Fake Speakers [FakeAPI]"
+    assert window.session.player.output_device == "Fake Speakers [FakeAPI]"
+
+
+def test_song_tab_restart_output_button_reopens_stream(window, backend):
+    view = window.song_view
+    window.session.project.set_song(tone(seconds=0.4, freq=440.0, channels=2), "Canción")
+    window.session.refresh_tracks()
+    window.session.play()
+    first_stream = backend.output_stream
+    view.btn_restart_output.click()
+    assert backend.output_stream is not first_stream
+    assert window.session.player.is_playing is True
+
+
 def test_mic_is_armed_so_meter_works_without_recording(window, backend):
     assert window.session.recorder.state is RecState.ARMED
     backend.input_stream.pump(2)

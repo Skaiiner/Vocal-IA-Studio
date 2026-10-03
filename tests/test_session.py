@@ -135,6 +135,28 @@ def test_apply_devices_persists_and_reopens_output(session, backend):
     assert SettingsStore(session.store.path).load().output_device == "Out [X]"
 
 
+def test_restart_audio_output_reopens_stream(session, backend):
+    session.new_project("P")
+    session.project.set_song(tone(1.0, 440, channels=2), "Song")
+    session.refresh_tracks()
+    session.play()
+    first_stream = backend.output_stream
+    assert first_stream is not None
+    session.restart_audio_output()
+    assert backend.output_stream is not first_stream
+    assert session.player.is_playing is True
+    out = backend.output_stream.pump(1)
+    assert float(np.max(np.abs(out))) > 0.1
+
+
+def test_restart_audio_output_keeps_paused_state(session, backend):
+    session.new_project("P")
+    session.project.set_song(tone(1.0, 440, channels=2), "Song")
+    session.refresh_tracks()
+    session.restart_audio_output()
+    assert session.player.is_playing is False
+
+
 def test_monitor_source_is_mixed_into_output(session, backend):
     session.new_project("P")
     session.recorder.monitor = True

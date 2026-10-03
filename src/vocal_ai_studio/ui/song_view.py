@@ -112,9 +112,26 @@ class SongView(QWidget):
         self.lbl_rec.setMinimumWidth(190)
         meter_row.addWidget(self.lbl_rec)
         actions_box.addLayout(meter_row)
+
+        output_row = QHBoxLayout()
+        output_row.addWidget(QLabel("Salida"))
+        self.cmb_output = QComboBox()
+        self.cmb_output.setMinimumWidth(260)
+        self.cmb_output.setToolTip("Elige por dónde quieres oír la canción y las tomas (altavoces, "
+                                   "auriculares, un micrófono virtual para OBS/Discord...).")
+        self.cmb_output.currentIndexChanged.connect(self._apply_output)
+        output_row.addWidget(self.cmb_output)
+        self.btn_restart_output = QPushButton("Reiniciar salida")
+        self.btn_restart_output.setToolTip("Si Play deja de sonar o no responde, pulsa aquí para "
+                                           "reabrir la salida de audio sin cerrar la aplicación.")
+        self.btn_restart_output.clicked.connect(self._restart_output)
+        output_row.addWidget(self.btn_restart_output)
+        output_row.addStretch(1)
+        actions_box.addLayout(output_row)
         root.addWidget(actions)
         self.btn_monitor.setChecked(self.session.settings.monitor_input)
         self._fill_mics()
+        self._fill_outputs()
 
         # waveform
         wave_panel, wave_box = panel()
@@ -233,6 +250,36 @@ class SongView(QWidget):
         except Exception as exc:  # noqa: BLE001
             log.info("No se pudo abrir el micrófono: %s", exc)
             self.status.emit("No se pudo abrir el micrófono: elige otro en la lista.")
+
+    # --- salida de audio ---
+    def _fill_outputs(self) -> None:
+        self.cmb_output.blockSignals(True)
+        self.cmb_output.clear()
+        self.cmb_output.addItem("Predeterminado del sistema", "")
+        try:
+            for dev in self.session.backend.output_devices():
+                self.cmb_output.addItem(dev.name, dev.label)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("No se pudieron listar salidas: %s", exc)
+        idx = self.cmb_output.findData(self.session.settings.output_device)
+        self.cmb_output.setCurrentIndex(idx if idx >= 0 else 0)
+        self.cmb_output.blockSignals(False)
+
+    def _apply_output(self) -> None:
+        try:
+            self.session.apply_devices(output_device=self.cmb_output.currentData())
+        except Exception as exc:  # noqa: BLE001
+            show_error(self, exc, "Al cambiar la salida de audio")
+            return
+        self.status.emit(f"Salida de audio: {self.cmb_output.currentText()}")
+
+    def _restart_output(self) -> None:
+        try:
+            self.session.restart_audio_output()
+        except Exception as exc:  # noqa: BLE001
+            show_error(self, exc, "Al reiniciar la salida de audio")
+            return
+        self.status.emit("Salida de audio reiniciada.")
 
     def _apply_monitor(self, on: bool) -> None:
         self.session.settings.monitor_input = on
@@ -416,6 +463,8 @@ class SongView(QWidget):
     def sync_devices(self) -> None:
         if self.cmb_mic.currentData() != self.session.settings.input_device:
             self._fill_mics()
+        if self.cmb_output.currentData() != self.session.settings.output_device:
+            self._fill_outputs()
         self.btn_monitor.setChecked(self.session.settings.monitor_input)
 
     def refresh(self) -> None:

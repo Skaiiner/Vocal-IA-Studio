@@ -501,6 +501,14 @@ class Session:
     def seek(self, seconds: float) -> None:
         self.player.seek(seconds)
 
+    def restart_audio_output(self) -> None:
+        # fuerza reabrir el stream de salida (p. ej. si el dispositivo cambió o dejó de responder)
+        was_playing = self.player.is_playing
+        self.player.close_stream()
+        self.player.ensure_stream()
+        if was_playing:
+            self.player.play()
+
     def set_song_gain(self, gain: float) -> None:
         self.player.set_gain("song", gain)
         if self.project:
