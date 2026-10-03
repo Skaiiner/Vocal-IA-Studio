@@ -9,12 +9,24 @@ from vocal_ai_studio.pitch.correction import (
     NoteOverride,
     build_target_curve,
     overrides_from_notes,
+    suggest_correction_settings,
 )
 from vocal_ai_studio.pitch.notes import hz_to_midi, note_name_to_hz
 from vocal_ai_studio.pitch.scales import KEYS, SCALES, nearest_scale_midi
 from vocal_ai_studio.pitch.shifter import ShiftCancelled, psola_resynthesize
 from vocal_ai_studio.pitch.yin import yin_pitch_track
+from vocal_ai_studio.voice_analysis.metrics import VocalAnalysis
 from vocal_ai_studio.voice_analysis.notes import segment_notes
+from vocal_ai_studio.voice_analysis.song import SongAnalysis
+
+
+def _vocal_analysis(**overrides) -> VocalAnalysis:
+    base = dict(pitch=PitchTrack(np.linspace(0, 1, 10), np.full(10, 440.0), np.ones(10)),
+                duration=5.0, notes=[], avg_cents_deviation=5.0, stability_cents=5.0,
+                vocal_range=("A3", "A4"), pauses=[], vibrato_rate_hz=None,
+                vibrato_extent_cents=None, voiced_fraction=0.9)
+    base.update(overrides)
+    return VocalAnalysis(**base)
 
 
 def tone(freq=440.0, seconds=1.0, sr=44100, amp=0.5):
@@ -238,3 +250,56 @@ def test_full_pipeline_detect_correct_and_reverify():
                                    preserve_formants=settings.preserve_formants)
     verified = yin_pitch_track(corrected, sr)
     assert np.nanmean(verified.f0) == pytest.approx(note_name_to_hz("A4"), rel=0.01)
+
+
+# --- sugerencia de ajustes (asistente de autotune) ---
+
+def test_suggest_settings_precise_pitch_is_gentle():
+    settings, explanation = suggest_correction_settings(_vocal_analysis(avg_cents_deviation=5.0))
+    assert settings.mode == "Natural"
+    assert settings.amount < 50
+    assert "precisa" in explanation
+
+
+def test_suggest_settings_bad_pitch_is_strong():
+    settings, explanation = suggest_correction_settings(_vocal_analysis(avg_cents_deviation=40.0))
+    assert settings.mode == "Hard Autotune"
+    assert settings.amount >= 85
+    assert "desvía" in explanation
+
+
+def test_suggest_settings_unstable_pitch_speeds_up_retune():
+    default_settings, _ = suggest_correction_settings(_vocal_analysis(avg_cents_deviation=15.0))
+    unstable_settings, explanation = suggest_correction_settings(
+        _vocal_analysis(avg_cents_deviation=15.0, stability_cents=50.0))
+    assert unstable_settings.speed_ms < default_settings.speed_ms
+    assert "tiembla" in explanation
+
+
+def test_suggest_settings_natural_vibrato_is_preserved():
+    default_settings, _ = suggest_correction_settings(_vocal_analysis(avg_cents_deviation=15.0))
+    vibrato_settings, explanation = suggest_correction_settings(
+        _vocal_analysis(avg_cents_deviation=15.0, vibrato_rate_hz=5.5, vibrato_extent_cents=60.0))
+    assert vibrato_settings.speed_ms > default_settings.speed_ms
+    assert vibrato_settings.humanize > default_settings.humanize
+    assert "vibrato" in explanation
+
+
+def test_suggest_settings_uses_confident_song_key():
+    song = SongAnalysis(bpm=120.0, key_root="G", key_is_major=False, key_confidence=0.9, duration=180.0)
+    settings, explanation = suggest_correction_settings(_vocal_analysis(), song)
+    assert settings.key == "G"
+    assert settings.scale == "Menor natural"
+    assert "Sol" in explanation
+
+
+def test_suggest_settings_ignores_unconfident_song_key():
+    song = SongAnalysis(bpm=120.0, key_root="G", key_is_major=False, key_confidence=0.5, duration=180.0)
+    settings, _ = suggest_correction_settings(_vocal_analysis(), song)
+    assert settings.key == "C"
+    assert settings.scale == "Mayor"
+
+
+def test_suggest_settings_respects_preserve_formants_flag():
+    settings, _ = suggest_correction_settings(_vocal_analysis(), preserve_formants=False)
+    assert settings.preserve_formants is False

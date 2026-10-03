@@ -104,6 +104,12 @@ class PitchEditorView(QWidget):
         self.cmb_scale.addItems(list(SCALES.keys()))
         self.cmb_scale.currentTextChanged.connect(self._on_settings_changed)
         mode_row.addWidget(self.cmb_scale)
+        self.btn_suggest = QPushButton("Sugerir con IA")
+        self.btn_suggest.setToolTip("Analiza tu afinación, estabilidad y vibrato (y la tonalidad de la "
+                                    "canción, si la hay) y propone un Modo/Amount/Speed/Humanize. "
+                                    "Solo rellena los controles: pulsa Aplicar si te convence.")
+        self.btn_suggest.clicked.connect(self._suggest)
+        mode_row.addWidget(self.btn_suggest)
         mode_row.addStretch(1)
         self.chk_formants = QCheckBox("Preservar formantes")
         self.chk_formants.setToolTip("Mantiene el timbre de tu voz al corregir. Si lo desactivas, "
@@ -124,6 +130,9 @@ class PitchEditorView(QWidget):
         controls_box.addWidget(hint("Amount=0 no cambia nada. Speed bajo = deslizamiento natural; "
                                     "alto = corrección robótica instantánea. La corrección nunca es "
                                     "obligatoria: pulsa Aplicar solo si te gusta el resultado."))
+        self.lbl_suggestion = hint("")
+        self.lbl_suggestion.setVisible(False)
+        controls_box.addWidget(self.lbl_suggestion)
         root.addWidget(controls_panel)
 
         editor_panel, editor_box = panel()
@@ -171,10 +180,12 @@ class PitchEditorView(QWidget):
 
     # --- carga / guardado de ajustes ---
     def refresh(self) -> None:
+        self.lbl_suggestion.setVisible(False)
         project = self.session.project
         if project is None:
             self.lbl_source.setText("Sin proyecto")
             self.btn_apply.setEnabled(False)
+            self.btn_suggest.setEnabled(False)
             self.editor.set_track(None)
             self.editor.set_target(None)
             self.editor.set_overrides([])
@@ -199,6 +210,7 @@ class PitchEditorView(QWidget):
             self.editor.set_target(None)
             self.editor.set_overrides([])
             self.btn_apply.setEnabled(False)
+            self.btn_suggest.setEnabled(False)
             self.lbl_status.setText("Analiza tu voz primero en la pestaña Voice.")
         else:
             self.editor.set_track(analysis.pitch, analysis.duration)
@@ -206,6 +218,7 @@ class PitchEditorView(QWidget):
                 overrides = self.session.seed_overrides_from_analysis()
             self.editor.set_overrides(overrides)
             self.btn_apply.setEnabled(not self._task.running)
+            self.btn_suggest.setEnabled(not self._task.running)
             self.lbl_status.setText("")
             self._recompute_preview()
         self._update_note_buttons()
@@ -315,8 +328,45 @@ class PitchEditorView(QWidget):
 
     def _on_finished(self) -> None:
         self.progress.setVisible(False)
+        self.progress.setRange(0, 100)
         self.btn_cancel.setVisible(False)
         self.btn_apply.setEnabled(self.session.project is not None)
+        self.btn_suggest.setEnabled(self.session.project is not None)
+
+    # --- sugerencia con IA ---
+    def _suggest(self) -> None:
+        if self._task.running or self.session.project is None:
+            return
+        preserve_formants = self.chk_formants.isChecked()
+        self.progress.setVisible(True)
+        self.progress.setRange(0, 0)  # indeterminado: no reporta progreso por pasos
+        self.btn_suggest.setEnabled(False)
+        self.lbl_status.setText("Analizando tu voz para sugerir ajustes…")
+        self._task.start(
+            lambda progress, cancelled: self.session.suggest_pitch_settings(preserve_formants),
+            on_success=self._on_suggest_success, on_failure=self._on_suggest_failure,
+            on_finished=self._on_finished,
+        )
+
+    def _on_suggest_success(self, result: tuple[CorrectionSettings, str]) -> None:
+        settings, explanation = result
+        self._loading = True
+        self.cmb_mode.setCurrentText(settings.mode if settings.mode in MODE_NAMES else "Balanced")
+        self.cmb_key.setCurrentText(settings.key)
+        self.cmb_scale.setCurrentText(settings.scale if settings.scale in SCALES else "Mayor")
+        self.sld_amount.setValue(int(settings.amount))
+        self.sld_speed.setValue(max(1, int(settings.speed_ms)))
+        self.sld_humanize.setValue(int(settings.humanize))
+        self._loading = False
+        self._on_settings_changed()  # recalcula la vista previa y guarda, como un cambio manual
+        self.lbl_suggestion.setText(explanation)
+        self.lbl_suggestion.setVisible(True)
+        self.status.emit("Sugerencia aplicada a los controles: revisa y pulsa Aplicar si te convence.")
+        self.lbl_status.setText("")
+
+    def _on_suggest_failure(self, exc: Exception) -> None:
+        log.exception("Fallo al sugerir ajustes de afinación")
+        show_error(self, exc, "Al sugerir ajustes con IA")
 
     def _tick(self) -> None:
         self.editor.set_position(self.session.player.position)

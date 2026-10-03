@@ -627,6 +627,40 @@ def test_pitch_editor_apply_creates_corrected_take(qtbot, window):
     assert "corregida" in window.session.project.data.takes[-1].name
 
 
+def test_pitch_editor_suggest_fills_controls_and_shows_explanation(qtbot, window):
+    window.session.project.add_take(tone(seconds=0.6, freq=440.0, channels=1))
+    window.song_view.refresh()
+    window.session.analyze_vocal()
+    pitch_index = [window.tabs.tabText(i) for i in range(window.tabs.count())].index("Pitch Editor")
+    window.tabs.setCurrentIndex(pitch_index)
+    window.pitch_editor_view.refresh()
+
+    view = window.pitch_editor_view
+    assert view.lbl_suggestion.isVisible() is False
+    view._suggest()
+    qtbot.waitUntil(lambda: not view._task.running, timeout=10000)
+
+    assert view.lbl_suggestion.isVisible() is True
+    assert view.lbl_suggestion.text()
+    assert view.cmb_mode.currentText() in ("Natural", "Balanced", "Hard Autotune", "Extreme")
+    # la sugerencia queda guardada como el estado de corrección actual, igual que un cambio manual
+    saved_settings, _ = window.session.load_correction()
+    assert saved_settings.mode == view.cmb_mode.currentText()
+
+
+def test_pitch_editor_suggest_without_analysis_shows_error(qtbot, window, monkeypatch):
+    from vocal_ai_studio.ui import pitch_editor_view as pev
+
+    shown = []
+    monkeypatch.setattr(pev, "show_error", lambda *a, **k: shown.append(a))
+    window.session.project.add_take(tone(seconds=0.6, freq=440.0, channels=1))
+    window.song_view.refresh()
+    window.pitch_editor_view.btn_suggest.setEnabled(True)  # fuerza el intento sin análisis
+    window.pitch_editor_view._suggest()
+    qtbot.waitUntil(lambda: not window.pitch_editor_view._task.running, timeout=10000)
+    assert shown
+
+
 def test_pitch_editor_apply_without_analysis_shows_error(qtbot, window, monkeypatch):
     from vocal_ai_studio.ui import pitch_editor_view as pev
 

@@ -34,6 +34,7 @@ tu audio no sale de tu ordenador salvo que tú lo autorices expresamente.
 | **Indicador de tu nota en vivo** mientras cantas (Song, Voice, Pitch Editor) | ✅ |
 | **BPM y tonalidad** de la canción | ✅ |
 | **Autotune**: modos Natural/Balanced/Hard Autotune/Extreme, Amount/Speed/Humanize/Key/Scale/Formantes | ✅ |
+| **Sugerir ajustes de autotune con IA** a partir de tu afinación/estabilidad/vibrato y la tonalidad de la canción | ✅ |
 | **Editor manual de afinación**: transportar, excluir, dividir y unir notas, arrastrando o con botones | ✅ |
 | **Voice Lab**: formantes, brillo, peso vocal, efectos y presets | ✅ |
 | **AI Coach**: feedback, puntos fuertes, a mejorar y ejercicios (reglas locales u Ollama) | ✅ |
@@ -149,7 +150,10 @@ en directo, junto a tu análisis anterior, mientras cantas de nuevo para compara
 2. Ve a **Pitch Editor**. Elige un **modo** (Natural, Balanced, Hard Autotune, Extreme) o ajusta a
    mano **Amount** (cuánto corrige), **Speed/Retune** (qué tan rápido desliza hacia la nota),
    **Humanize** (deja que las notas largas respiren, menos robótico), **Preservar formantes**
-   (mantiene tu timbre), **Tonalidad** y **Escala**.
+   (mantiene tu timbre), **Tonalidad** y **Escala**. Si no sabes por dónde empezar, pulsa
+   **"Sugerir con IA"**: analiza tu afinación, estabilidad y vibrato (y la tonalidad de la canción,
+   si hay una importada) y rellena esos controles por ti, explicando por qué — tú decides si
+   quedarte con la sugerencia, retocarla o ignorarla; no aplica nada hasta que pulses Aplicar.
 3. La curva corregida se dibuja en vivo sobre la original, con las notas detectadas como cajas
    que puedes:
    - **Arrastrar verticalmente** para transportar una nota, o usar los botones **+/− semitono**.
@@ -236,7 +240,7 @@ técnico queda en `logs/app.log` (botón *Abrir carpeta de logs* en Settings).
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest        # 385 tests automáticos
+.\.venv\Scripts\python.exe -m pytest        # 397 tests automáticos
 ```
 
 Los tests no necesitan tarjeta de sonido: usan un backend de audio falso y Qt en modo *offscreen*.

@@ -142,6 +142,36 @@ def test_apply_correction_saves_settings_used(session):
     assert saved_settings == settings
 
 
+def test_suggest_pitch_settings_requires_analysis(session):
+    session.project.add_take(flat_tone())
+    session.refresh_tracks()
+    with pytest.raises(AppError):
+        session.suggest_pitch_settings()
+
+
+def test_suggest_pitch_settings_returns_settings_and_explanation(session):
+    session.project.add_take(flat_tone(cents_off=40))
+    session.refresh_tracks()
+    session.analyze_vocal()
+
+    settings, explanation = session.suggest_pitch_settings()
+
+    assert isinstance(settings, CorrectionSettings)
+    assert settings.mode in ("Natural", "Balanced", "Hard Autotune", "Extreme")
+    assert isinstance(explanation, str) and explanation
+
+
+def test_suggest_pitch_settings_does_not_mutate_saved_correction(session):
+    session.project.add_take(flat_tone(cents_off=40))
+    session.refresh_tracks()
+    session.analyze_vocal()
+    session.save_correction(CorrectionSettings(key="D"), [])
+
+    session.suggest_pitch_settings()
+
+    assert session.load_correction()[0].key == "D"  # sugerir no aplica nada por sí solo
+
+
 def test_apply_correction_amount_zero_barely_changes_pitch(session):
     session.project.add_take(flat_tone(cents_off=45))
     session.refresh_tracks()

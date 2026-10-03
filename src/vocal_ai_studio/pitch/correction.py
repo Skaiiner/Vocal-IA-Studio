@@ -7,7 +7,9 @@ import numpy as np
 from vocal_ai_studio.core.interfaces import PitchTrack
 from vocal_ai_studio.pitch.notes import hz_to_midi, median_smooth, midi_to_hz
 from vocal_ai_studio.pitch.scales import KEYS, SCALES, nearest_scale_midi
+from vocal_ai_studio.voice_analysis.metrics import VocalAnalysis
 from vocal_ai_studio.voice_analysis.notes import NoteSegment
+from vocal_ai_studio.voice_analysis.song import SongAnalysis
 
 MODE_PRESETS: dict[str, dict] = {
     "Natural": {"amount": 40.0, "speed_ms": 120.0, "humanize": 70.0},
@@ -41,6 +43,57 @@ class CorrectionSettings:
     @classmethod
     def from_dict(cls, data: dict) -> "CorrectionSettings":
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+
+def suggest_correction_settings(vocal: VocalAnalysis, song: SongAnalysis | None = None,
+                                preserve_formants: bool = True) -> tuple["CorrectionSettings", str]:
+    """Propone Modo/Amount/Speed/Humanize/Tonalidad a partir del análisis vocal y de la canción.
+
+    Puramente numérico (sin red ni modelos): cada ajuste sale de una medida concreta del análisis,
+    nunca se inventa. La explicación que devuelve puede reescribirse con un proveedor de IA (ver
+    Session.suggest_pitch_settings) para sonar más natural, pero los números no cambian.
+    """
+    dev = vocal.avg_cents_deviation
+    reasons: list[str] = []
+
+    if dev < 10:
+        mode, amount = "Natural", 35.0
+        reasons.append(f"tu afinación ya es muy precisa (se desvía solo {dev:.0f} cents de media)")
+    elif dev < 25:
+        mode, amount = "Balanced", 65.0
+        reasons.append(f"tu afinación se desvía unos {dev:.0f} cents de media")
+    else:
+        mode, amount = "Hard Autotune", 90.0
+        reasons.append(f"tu afinación se desvía bastante ({dev:.0f} cents de media)")
+
+    base = MODE_PRESETS[mode]
+    speed_ms, humanize = base["speed_ms"], base["humanize"]
+
+    natural_vibrato = (vocal.vibrato_rate_hz is not None and 4.5 <= vocal.vibrato_rate_hz <= 7.0
+                      and (vocal.vibrato_extent_cents or 0.0) <= 150.0)
+    if natural_vibrato:
+        speed_ms *= 1.8
+        humanize = min(100.0, humanize + 20.0)
+        reasons.append(f"tu vibrato ({vocal.vibrato_rate_hz:.1f} Hz) suena natural, así que se afloja "
+                       "el retune para no aplastarlo")
+    elif vocal.stability_cents > 30:
+        speed_ms = max(5.0, speed_ms * 0.5)
+        reasons.append(f"el tono tiembla dentro de las notas (variación de {vocal.stability_cents:.0f} "
+                       "cents), así que se ajusta un retune más rápido para estabilizarlo")
+
+    # 0.55: bastante por encima del 0.5 de "sin correlación" de estimate_key — evita sugerir una
+    # tonalidad que el propio detector no tiene claro (ver voice_analysis/song.py:estimate_key).
+    if song is not None and song.key_confidence > 0.55:
+        key = song.key_root
+        scale = "Mayor" if song.key_is_major else "Menor natural"
+        reasons.append(f"la canción está en {song.key_label}")
+    else:
+        key, scale = "C", "Mayor"
+
+    settings = CorrectionSettings(key=key, scale=scale, amount=amount, speed_ms=speed_ms,
+                                  humanize=humanize, preserve_formants=preserve_formants, mode=mode)
+    explanation = f"Sugerencia «{mode}» ({amount:.0f}%): " + "; ".join(reasons) + "."
+    return settings, explanation
 
 
 @dataclass

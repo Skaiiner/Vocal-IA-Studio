@@ -190,6 +190,29 @@ instantes de cierre glotal) pierde algo de precisión en pasajes con cambios de 
 canción — la precisión es mucho mejor, como demuestran los tests con tonos sintéticos y vibrato.
 Mejorar esto más (epochs reales en vez de periodo instantáneo) es candidato para una fase futura.
 
+## Sugerir ajustes de autotune con IA
+
+`pitch.correction.suggest_correction_settings(vocal, song)` propone Modo/Amount/Speed/Humanize/
+Tonalidad a partir de números concretos del análisis — nunca los inventa un modelo:
+
+- **Amount/Modo**: según `avg_cents_deviation` (afinación ya precisa → Natural y Amount bajo;
+  desviación grande → Hard Autotune y Amount alto).
+- **Speed**: más lento (menos robótico) si el vibrato ya es natural (4.5–7 Hz, extensión moderada:
+  los mismos umbrales que `ai.rules.build_feedback` usa para *elogiar* el vibrato, por coherencia
+  entre Pitch Editor y AI Coach); más rápido si el tono tiembla dentro de las notas
+  (`stability_cents` alto) sin vibrato natural que lo justifique.
+- **Tonalidad/Escala**: la de la canción (`SongAnalysis.key_root`/`key_is_major`) solo si
+  `key_confidence > 0.55` — un margen amplio por encima del 0.5 de "sin correlación" de
+  `estimate_key()`, para no sugerir una tonalidad que el propio detector no tiene clara.
+
+Esto sigue el mismo patrón que `Session.generate_coach_feedback()` (Fase 5): la lógica que decide
+los números es determinista y local; si hay un proveedor de IA en la nube/Ollama configurado
+(`Session._coach_provider()`, reutilizado tal cual), se le pide *solo* que reescriba la explicación
+en un tono más natural, nunca que cambie los valores — y si no responde, se queda la explicación de
+reglas locales sin que la sugerencia falle. `Session.suggest_pitch_settings()` no aplica nada por sí
+sola: rellena los controles de `PitchEditorView` exactamente como si el usuario hubiera movido los
+sliders a mano (mismo guardado/vista previa automáticos), y "Aplicar" sigue siendo un paso aparte.
+
 ## Tu nota en vivo mientras cantas
 
 `Recorder` mantiene un buffer circular de las últimas ~4096 muestras captadas (`recent_samples()`),
@@ -302,6 +325,6 @@ evita que se abra una ventana de consola junto a la app.
 
 ## Tests
 
-385 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
+397 tests automáticos sin necesidad de hardware: el audio usa un backend falso que bombea bloques bajo
 control del test (incluido `FakeDuplexStream` para la E/S dúplex de la voz en vivo), y Qt corre en modo
 *offscreen*. Lo que no se puede automatizar está documentado como prueba manual en `docs/MANUAL_TESTS.md`.

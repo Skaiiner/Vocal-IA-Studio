@@ -17,6 +17,7 @@ from vocal_ai_studio.pitch.correction import (
     NoteOverride,
     build_target_curve,
     overrides_from_notes,
+    suggest_correction_settings,
 )
 from vocal_ai_studio.effects.chain import VoiceLabSettings, apply_chain
 from vocal_ai_studio.pitch.shifter import psola_resynthesize
@@ -287,6 +288,30 @@ class Session:
     def seed_overrides_from_analysis(self) -> list[NoteOverride]:
         analysis = self.load_vocal_analysis()
         return overrides_from_notes(analysis.notes) if analysis else []
+
+    def suggest_pitch_settings(self, preserve_formants: bool = True) -> tuple[CorrectionSettings, str]:
+        analysis = self.load_vocal_analysis()
+        if analysis is None:
+            raise AppError("Analiza tu voz primero.", "Hace falta el análisis de afinación (pestaña Voice).",
+                           "Ve a Voice y pulsa Analizar, y vuelve aquí.")
+        song = self.load_song_analysis()
+        settings, explanation = suggest_correction_settings(analysis, song, preserve_formants)
+        provider = self._coach_provider()
+        if not isinstance(provider, LocalRulesProvider):
+            prompt = (
+                "Reescribe esta explicación de ajustes de afinación automática en un tono cercano, "
+                "en español, en 2-3 frases como mucho, conservando todos los datos concretos (cents, Hz, "
+                "nombres de modo/tonalidad). No inventes datos nuevos ni cambies los valores mencionados.\n\n"
+                f"{explanation}"
+            )
+            try:
+                rewritten = provider.complete(prompt)
+            except OSError as exc:
+                log.warning("Ollama no respondió, se usa la explicación de reglas locales: %s", exc)
+            else:
+                if rewritten:
+                    explanation = rewritten
+        return settings, explanation
 
     def preview_correction_curve(self, settings: CorrectionSettings, overrides: list[NoteOverride]):
         analysis = self.load_vocal_analysis()
