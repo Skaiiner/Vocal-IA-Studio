@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "vocal-ai-studio"
 version = "0.1.0"
 description = "Estudio vocal con IA: practica canto, analiza y modifica tu voz (procesamiento local)."
-authors = [{ name = "MDCL", email = "76896366+Skaiiner@users.noreply.github.com" }]
+authors = [{ name = "Skaiiner", email = "76896366+Skaiiner@users.noreply.github.com" }]
 requires-python = ">=3.10"
 dependencies = [
     "PySide6>=6.6",
